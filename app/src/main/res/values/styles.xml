@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Estilo para títulos principales -->
+    <style name="TextAppearance.App.Headline" parent="TextAppearance.MaterialComponents.Headline5">
+        <item name="fontFamily">@font/helvetica_medium</item>
+        <item name="android:fontFamily">@font/helvetica_medium</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <!-- Estilo para precios -->
+    <style name="TextAppearance.App.Price" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="fontFamily">@font/helvetica_bold</item>
+        <item name="android:fontFamily">@font/helvetica_bold</item>
+        <item name="android:textColor">@color/price_color</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+
+    <!-- Estilo para descripciones -->
+    <style name="TextAppearance.App.Description" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="fontFamily">@font/helvetica_regular</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Estilo para referencias/códigos -->
+    <style name="TextAppearance.App.Reference" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="fontFamily">@font/fragment_mono_regular</item>
+        <item name="android:fontFamily">@font/fragment_mono_regular</item>
+        <item name="android:textColor">@color/on_background</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Estilo para familia -->
+    <style name="TextAppearance.App.Familia" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="fontFamily">@font/helvetica_italic</item>
+        <item name="android:textSize">12sp</item>d
+    </style>
+
+    <!-- Estilo para estado Activo-->
+    <style name="TextAppearance.App.Estado" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="fontFamily">@font/helvetica_light</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Estilo para estado Activo-->
+    <style name="TextAppearance.App.EstadoActivo" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">@color/color_estado_activo</item>
+    </style>
+    <!-- Estilo para estado Anulado-->
+    <style name="TextAppearance.App.EstadoAnulado" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">@color/color_estado_anulado</item>
+    </style>
+
+    <!-- Estilo para ultima actualizacion -->
+    <style name="TextAppearance.App.UltimaActualizacion" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/color_bar_actualizacion</item>
+        <item name="android:background">@color/background_bar_actualizacion</item>
+    </style>
+
+</resources>

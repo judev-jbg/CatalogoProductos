@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Colores para modo oscuro -->
+    <color name="primary">#c10556</color>        <!-- Azul más claro -->
+    <color name="primary_variant">#9B0C45</color>
+    <color name="secondary">#c10556</color>      <!-- Ámbar secundario -->
+    <color name="secondary_variant">#9B0C45</color>
+
+
+
+    <color name="background">#3A3A3A</color>     <!-- Fondo oscuro estándar -->
+    <color name="surface">#5F5F5F</color>
+    <color name="error">#CF6679</color>
+
+    <color name="on_primary">#000000</color>
+    <color name="on_secondary">#000000</color>
+    <color name="on_background">#FFFFFF</color>
+    <color name="on_surface">#FFFFFF</color>
+
+    <!-- Colores específicos adaptados -->
+    <color name="price_color">#FFA000</color>    <!-- Azul más claro para precios -->
+    <color name="background_price_color">#544A3B</color>   <!-- Azul para precios -->
+    <color name="discount_color">#81C784</color> <!-- Verde más claro para descuentos -->
+    <color name="background_stock">#4B564B</color>    <!-- Verde para stock alto -->
+    <color name="background_bar_actualizacion">#666666</color>   <!-- Rojo para stock vacío -->
+    <color name="color_bar_actualizacion">#CCCCCC</color>   <!-- Rojo para stock vacío -->
+    <color name="color_estado_anulado">#CE7886</color>   <!-- Rojo para stock vacío -->
+    <color name="color_estado_activo">#4CAF50</color>   <!-- Rojo para stock vacío -->
+</resources>

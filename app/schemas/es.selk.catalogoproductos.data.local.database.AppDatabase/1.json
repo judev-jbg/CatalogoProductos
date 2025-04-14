@@ -1,0 +1,347 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "4e0e51463894b5fcd599e673b96a3228",
+    "entities": [
+      {
+        "tableName": "productos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_producto` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `referencia` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `cantidad_bulto` REAL NOT NULL, `unidad_venta` REAL NOT NULL, `familia` TEXT NOT NULL, `stock_actual` REAL NOT NULL, `precio_actual` REAL NOT NULL, `descuento` TEXT NOT NULL, `ultima_actualizacion` INTEGER NOT NULL, `estado` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id_producto",
+            "columnName": "id_producto",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referencia",
+            "columnName": "referencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "descripcion",
+            "columnName": "descripcion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cantidad_bulto",
+            "columnName": "cantidad_bulto",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unidad_venta",
+            "columnName": "unidad_venta",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "familia",
+            "columnName": "familia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stock_actual",
+            "columnName": "stock_actual",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "precio_actual",
+            "columnName": "precio_actual",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "descuento",
+            "columnName": "descuento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ultima_actualizacion",
+            "columnName": "ultima_actualizacion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_producto"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_productos_referencia",
+            "unique": true,
+            "columnNames": [
+              "referencia"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_productos_referencia` ON `${TABLE_NAME}` (`referencia`)"
+          },
+          {
+            "name": "index_productos_descripcion",
+            "unique": false,
+            "columnNames": [
+              "descripcion"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productos_descripcion` ON `${TABLE_NAME}` (`descripcion`)"
+          },
+          {
+            "name": "index_productos_ultima_actualizacion",
+            "unique": false,
+            "columnNames": [
+              "ultima_actualizacion"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_productos_ultima_actualizacion` ON `${TABLE_NAME}` (`ultima_actualizacion`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "historial_precio",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `id_producto` INTEGER NOT NULL, `precio` REAL NOT NULL, `fecha_cambio` INTEGER NOT NULL, `sincronizado` INTEGER NOT NULL, FOREIGN KEY(`id_producto`) REFERENCES `productos`(`id_producto`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id_producto",
+            "columnName": "id_producto",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "precio",
+            "columnName": "precio",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha_cambio",
+            "columnName": "fecha_cambio",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sincronizado",
+            "columnName": "sincronizado",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_historial_precio_id_producto",
+            "unique": false,
+            "columnNames": [
+              "id_producto"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_historial_precio_id_producto` ON `${TABLE_NAME}` (`id_producto`)"
+          },
+          {
+            "name": "index_historial_precio_fecha_cambio",
+            "unique": false,
+            "columnNames": [
+              "fecha_cambio"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_historial_precio_fecha_cambio` ON `${TABLE_NAME}` (`fecha_cambio`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "productos",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_producto"
+            ],
+            "referencedColumns": [
+              "id_producto"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "historial_stock",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `id_producto` INTEGER NOT NULL, `stock` INTEGER NOT NULL, `fecha_cambio` INTEGER NOT NULL, `sincronizado` INTEGER NOT NULL, FOREIGN KEY(`id_producto`) REFERENCES `productos`(`id_producto`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id_producto",
+            "columnName": "id_producto",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stock",
+            "columnName": "stock",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha_cambio",
+            "columnName": "fecha_cambio",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sincronizado",
+            "columnName": "sincronizado",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_historial_stock_id_producto",
+            "unique": false,
+            "columnNames": [
+              "id_producto"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_historial_stock_id_producto` ON `${TABLE_NAME}` (`id_producto`)"
+          },
+          {
+            "name": "index_historial_stock_fecha_cambio",
+            "unique": false,
+            "columnNames": [
+              "fecha_cambio"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_historial_stock_fecha_cambio` ON `${TABLE_NAME}` (`fecha_cambio`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "productos",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_producto"
+            ],
+            "referencedColumns": [
+              "id_producto"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "ultima_actualizacion",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `version` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "productos",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_BEFORE_UPDATE BEFORE UPDATE ON `productos` BEGIN DELETE FROM `productos_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_BEFORE_DELETE BEFORE DELETE ON `productos` BEGIN DELETE FROM `productos_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_AFTER_UPDATE AFTER UPDATE ON `productos` BEGIN INSERT INTO `productos_fts`(`docid`, `referencia`, `descripcion`) VALUES (NEW.`rowid`, NEW.`referencia`, NEW.`descripcion`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_AFTER_INSERT AFTER INSERT ON `productos` BEGIN INSERT INTO `productos_fts`(`docid`, `referencia`, `descripcion`) VALUES (NEW.`rowid`, NEW.`referencia`, NEW.`descripcion`); END"
+        ],
+        "tableName": "productos_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`referencia` TEXT NOT NULL, `descripcion` TEXT NOT NULL, content=`productos`)",
+        "fields": [
+          {
+            "fieldPath": "referencia",
+            "columnName": "referencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "descripcion",
+            "columnName": "descripcion",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowid"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4e0e51463894b5fcd599e673b96a3228')"
+    ]
+  }
+}
