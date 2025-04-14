@@ -1,26 +1,44 @@
 package es.selk.catalogoproductos.ui.main
 
+import android.app.ActivityOptions
+import android.content.Context
+import android.content.Intent
+import android.graphics.PorterDuff
+import android.graphics.Rect
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import android.widget.ImageView
 import android.widget.SearchView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import es.selk.catalogoproductos.R
 import es.selk.catalogoproductos.data.local.database.AppDatabase
 import es.selk.catalogoproductos.data.repository.ProductoRepository
 import es.selk.catalogoproductos.data.repository.SyncRepository
 import es.selk.catalogoproductos.databinding.ActivityMainBinding
 import es.selk.catalogoproductos.ui.adapter.ProductoAdapter
+import es.selk.catalogoproductos.ui.detail.ProductDetailActivity
 import es.selk.catalogoproductos.ui.viewmodel.ProductoViewModel
 import es.selk.catalogoproductos.ui.viewmodel.SyncViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -44,17 +62,22 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private val productoViewModel: ProductoViewModel by viewModels {
-        ProductoViewModel.Factory(productoRepository)
-    }
+    private lateinit var productoViewModel: ProductoViewModel
 
     private val syncViewModel: SyncViewModel by viewModels {
         SyncViewModel.Factory(syncRepository)
     }
 
     private val productoAdapter = ProductoAdapter { producto ->
-        // Navegación al detalle del producto (implementar en el futuro)
-        Toast.makeText(this, "Producto: ${producto.descripcion}", Toast.LENGTH_SHORT).show()
+        val intent = Intent(this, ProductDetailActivity::class.java)
+        intent.putExtra("producto", producto)
+
+        val options = ActivityOptions.makeCustomAnimation(
+            this,
+            R.anim.slide_in_right,
+            R.anim.slide_out_left
+        )
+        startActivity(intent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,10 +90,74 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         setupListeners()
         observeViewModel()
+
+        val factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return ProductoViewModel(productoRepository) as T
+            }
+        }
+
+        productoViewModel = ViewModelProvider(this, factory)[ProductoViewModel::class.java]
+
+        lifecycleScope.launch {
+            try {
+                // Solo cargamos datos si la base de datos está vacía
+                val productos = productoViewModel.getProductCount()
+                if (productos == 0) {
+                    syncRepository.cargarDatosIniciales(applicationContext)
+                    Toast.makeText(this@MainActivity, "Datos iniciales cargados", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "Error al cargar datos: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupRecyclerView() {
+        val columnCount = resources.getInteger(R.integer.grid_column_count)
+        val layoutManager = GridLayoutManager(this, columnCount)
+        binding.recyclerView.layoutManager = layoutManager
         binding.recyclerView.adapter = productoAdapter
+
+        val spacing = resources.getDimensionPixelSize(R.dimen.card_margin)
+        binding.recyclerView.addItemDecoration(GridSpacingItemDecoration(columnCount, spacing, true))
+
+    }
+
+
+    class GridSpacingItemDecoration(
+        private val spanCount: Int,
+        private val spacing: Int,
+        private val includeEdge: Boolean
+    ) : RecyclerView.ItemDecoration() {
+
+        override fun getItemOffsets(
+            outRect: Rect,
+            view: View,
+            parent: RecyclerView,
+            state: RecyclerView.State
+        ) {
+            val position = parent.getChildAdapterPosition(view)
+            val column = position % spanCount
+
+            if (includeEdge) {
+                outRect.left = spacing - column * spacing / spanCount
+                outRect.right = (column + 1) * spacing / spanCount
+
+                if (position < spanCount) {
+                    outRect.top = spacing
+                }
+                outRect.bottom = spacing
+            } else {
+                outRect.left = column * spacing / spanCount
+                outRect.right = spacing - (column + 1) * spacing / spanCount
+
+                if (position >= spanCount) {
+                    outRect.top = spacing
+                }
+            }
+        }
     }
 
     private fun setupListeners() {
@@ -87,6 +174,7 @@ class MainActivity : AppCompatActivity() {
                     productoViewModel.searchResults.collectLatest { productos ->
                         productoAdapter.submitList(productos)
                         binding.tvEmpty.isVisible = productos.isEmpty()
+                        Log.d("MainActivity", "Productos cargados: ${productos.size}")
                     }
                 }
 
@@ -139,10 +227,48 @@ class MainActivity : AppCompatActivity() {
         val searchItem = menu.findItem(R.id.action_search)
         val searchView = searchItem.actionView as SearchView
 
+        searchView.queryHint = "Referencia o descripción del producto"
+
+        val searchEditText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
+        searchEditText?.apply {
+            // Cambiar color del texto
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.on_primary))
+            // Cambiar color del hint
+            setHintTextColor(ContextCompat.getColor(this@MainActivity, R.color.on_primary))
+
+        }
+
+        // Cambiar color del icono de búsqueda
+        val searchIcon = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_button)
+        searchIcon?.setColorFilter(ContextCompat.getColor(this, R.color.on_primary), PorterDuff.Mode.SRC_IN)
+
+        // Cambiar color del icono de cerrar
+        val closeIcon = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_close_btn)
+        closeIcon?.setColorFilter(ContextCompat.getColor(this, R.color.on_primary), PorterDuff.Mode.SRC_IN)
+
+        searchItem.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
+            override fun onMenuItemActionExpand(item: MenuItem): Boolean {
+                searchView.requestFocus()
+                // Muestra el teclado virtual
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(searchView.findFocus(), InputMethodManager.SHOW_IMPLICIT)
+                return true
+            }
+
+            override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
+                return true
+            }
+        })
+        searchItem.setOnMenuItemClickListener {
+            searchItem.expandActionView()
+            true
+        }
+
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 if (!query.isNullOrBlank()) {
                     productoViewModel.setSearchQuery(query)
+                    searchView.clearFocus()
                 }
                 return true
             }

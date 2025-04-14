@@ -1,9 +1,17 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.CatalogoProductos" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    <style name="Theme.CatalogoProductos" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Colores primarios -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <!-- Colores secundarios -->
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorSecondaryVariant">@color/secondary_variant</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <!-- Colores de fondo -->
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+        <!-- Barra de estado -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
     </style>
-
-    <style name="Theme.CatalogoProductos" parent="Base.Theme.CatalogoProductos" />
 </resources>

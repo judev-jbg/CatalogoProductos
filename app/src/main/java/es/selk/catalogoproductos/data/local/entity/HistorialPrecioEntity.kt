@@ -23,7 +23,7 @@ import androidx.room.PrimaryKey
 data class HistorialPrecioEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val id_producto: String,
+    val id_producto: Int,
     val precio: Double,
     val fecha_cambio: Long,
     val sincronizado: Boolean = false

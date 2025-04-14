@@ -34,6 +34,19 @@ class ProductoViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    // Estado de todos los productos
+    private val _allProducts = MutableStateFlow<List<ProductoEntity>>(emptyList())
+    val allProducts: StateFlow<List<ProductoEntity>> = _allProducts
+
+    suspend fun getProductCount(): Int {
+        return productoRepository.getProductCount()
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+
     init {
         // Configurar flujo reactivo para búsqueda en tiempo real
         viewModelScope.launch {
@@ -59,12 +72,19 @@ class ProductoViewModel(
                     _isLoading.value = false
                 }
         }
-    }
+        viewModelScope.launch {
+            productoRepository.getAllProductos()
+                .collect { productos ->
+                    _allProducts.value = productos
 
-    // Actualizar consulta de búsqueda
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
-    }
+                    // Si no hay búsqueda activa, muestra todos los productos
+                    if (_searchQuery.value.isBlank()) {
+                        _searchResults.value = productos
+                    }
+                }
+        }
+
+
 
     // Factory para crear el ViewModel con dependencias
     class Factory(
@@ -77,5 +97,8 @@ class ProductoViewModel(
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }
+
+    }
+
     }
 }

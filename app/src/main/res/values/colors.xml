@@ -1,5 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <!-- Colores principales -->
+    <color name="primary">#c10556</color>        <!-- Azul principal -->
+    <color name="primary_variant">#9B0C45</color><!-- Azul más oscuro -->
+    <color name="secondary">#FFFFFF</color>      <!-- Ámbar secundario -->
+    <color name="secondary_variant">#818181</color>
+
+    <!-- Colores de superficie -->
+    <color name="background">#FFFFFF</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="error">#B00020</color>
+
+    <!-- Colores de texto/contraste -->
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_secondary">#000000</color>
+    <color name="on_background">#000000</color>
+    <color name="on_surface">#000000</color>
+
+    <!-- Colores específicos para la aplicación -->
+    <color name="price_color">#c10556</color>   <!-- Azul para precios -->
+    <color name="background_price_color">#EDE0E6</color>   <!-- Azul para precios -->
+    <color name="discount_color">#4CAF50</color><!-- Verde para descuentos -->
+    <color name="background_stock">#E8FAE8</color>    <!-- Verde para stock alto -->
+    <color name="stock_high">#4CAF50</color>    <!-- Verde para stock alto -->
+    <color name="stock_medium">#FFA000</color>  <!-- Ámbar para stock medio -->
+    <color name="stock_low">#F44336</color>     <!-- Rojo para stock bajo -->
+    <color name="background_bar_actualizacion">#F6F6F6</color>   <!-- Rojo para stock vacío -->
+    <color name="color_bar_actualizacion">#818181</color>   <!-- Rojo para stock vacío -->
+    <color name="color_estado_anulado">#CE364D</color>   <!-- Rojo para stock vacío -->
+    <color name="color_estado_activo">#4CAF50</color>   <!-- Rojo para stock vacío -->
 </resources>

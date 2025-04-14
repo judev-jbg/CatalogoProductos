@@ -1,6 +1,7 @@
 package es.selk.catalogoproductos.sync
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import es.selk.catalogoproductos.data.local.database.AppDatabase
@@ -23,10 +24,12 @@ class SyncWorker(
         return try {
             val updateAvailable = syncRepository.checkUpdates()
 
-            if (updateAvailable) {
+            if (updateAvailable as Boolean) {
+                Log.d("SyncWorker", "Hay una actualización disponible")
                 val success = syncRepository.sincronizarCambios()
                 if (success) Result.success() else Result.retry()
             } else {
+                Log.d("SyncWorker", "No hay actualizaciones disponibles")
                 Result.success()
             }
         } catch (e: Exception) {

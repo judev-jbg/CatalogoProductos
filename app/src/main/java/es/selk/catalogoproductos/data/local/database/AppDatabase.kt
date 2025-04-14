@@ -6,7 +6,6 @@ import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Fts4
 import androidx.room.PrimaryKey
-import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -20,7 +19,6 @@ import es.selk.catalogoproductos.data.local.entity.ProductoEntity
 import es.selk.catalogoproductos.data.local.entity.UltimaActualizacionEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 @Database(
@@ -28,7 +26,8 @@ import kotlinx.coroutines.launch
         ProductoEntity::class,
         HistorialPrecioEntity::class,
         HistorialStockEntity::class,
-        UltimaActualizacionEntity::class
+        UltimaActualizacionEntity::class,
+        ProductoFTS::class
     ],
     version = 1,
     exportSchema = true
@@ -81,7 +80,7 @@ data class ProductoFTS(
     @ColumnInfo(name = "rowid")
     @PrimaryKey
     val rowId: Int,
-    val id_producto: String,
+    val referencia: String,
     val descripcion: String
 )
 

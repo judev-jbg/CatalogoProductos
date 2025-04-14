@@ -58,9 +58,9 @@ class SyncViewModel(
     fun checkForUpdates() {
         viewModelScope.launch {
             try {
-                _updateAvailable.value = syncRepository.checkUpdates()
+                _updateAvailable.value = syncRepository.checkUpdates() as Boolean
             } catch (e: Exception) {
-                _error.value = "Error al verificar actualizaciones: ${e.message}"
+                _error.value = "Error al verificar version de actualizaciones: ${e.message}"
             }
         }
     }
@@ -87,26 +87,6 @@ class SyncViewModel(
         }
     }
 
-    // Sincronizar desde archivo local
-    fun syncFromLocalFile(file: File) {
-        viewModelScope.launch {
-            _isSyncing.value = true
-            _error.value = null
-
-            try {
-                val success = syncRepository.procesarArchivoDiferencias(file)
-                if (success) {
-                    loadLastUpdate()
-                } else {
-                    _error.value = "Error al procesar archivo"
-                }
-            } catch (e: Exception) {
-                _error.value = "Error: ${e.message}"
-            } finally {
-                _isSyncing.value = false
-            }
-        }
-    }
 
     // Formatear fecha de última actualización
     private fun formatDate(timestamp: Long?) {

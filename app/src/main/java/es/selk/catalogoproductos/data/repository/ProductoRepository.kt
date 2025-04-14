@@ -27,7 +27,7 @@ class ProductoRepository(
 
     // Obtener producto por ID
     suspend fun getProductoById(id: String): ProductoEntity? {
-        return productoDao.getProductoById(id)
+        return productoDao.getProductoByReferencia(id)
     }
 
     // Obtener historial de precios
@@ -41,7 +41,7 @@ class ProductoRepository(
     }
 
     // Registrar cambio de precio
-    suspend fun registrarCambioPrecio(idProducto: String, nuevoPrecio: Double) {
+    suspend fun registrarCambioPrecio(idProducto: Int, nuevoPrecio: Double) {
         val timestamp = System.currentTimeMillis()
 
         // Actualizar precio actual
@@ -58,7 +58,7 @@ class ProductoRepository(
     }
 
     // Registrar cambio de stock
-    suspend fun registrarCambioStock(idProducto: String, nuevoStock: Int) {
+    suspend fun registrarCambioStock(idProducto: Int, nuevoStock: Int) {
         val timestamp = System.currentTimeMillis()
 
         // Actualizar stock actual
@@ -73,6 +73,14 @@ class ProductoRepository(
             )
         )
     }
+    suspend fun getProductCount(): Int {
+        return productoDao.getProductCount()
+    }
+
+    fun getAllProductos(): Flow<List<ProductoEntity>> {
+        return productoDao.getAllProductosFlow()
+    }
+
 
     // Cargar productos desde archivo (primera carga)
     suspend fun cargarProductosDesdeArchivo(contenido: String) {
@@ -81,18 +89,20 @@ class ProductoRepository(
                 .filter { it.isNotBlank() }
                 .map { linea ->
                     val campos = linea.split("|")
-                    if (campos.size < 7) throw IOException("Formato incorrecto")
+                    if (campos.size < 12) throw IOException("Formato incorrecto")
 
                     ProductoEntity(
-                        id_producto = campos[0].trim(),
-                        codigo = campos[1].trim(),
+                        id_producto = campos[0].toInt(),
+                        referencia = campos[1].trim(),
                         descripcion = campos[2].trim(),
-                        precio_actual = campos[3].toDoubleOrNull() ?: 0.0,
-                        stock_actual = campos[4].toIntOrNull() ?: 0,
-                        categoria = campos[5].trim(),
-                        descuento = campos[6].toDoubleOrNull() ?: 0.0,
+                        cantidad_bulto = campos[3].toDoubleOrNull() ?: 0.0,
+                        unidad_venta = campos[4].toDoubleOrNull() ?: 0.0,
+                        familia = campos[5].trim(),
+                        precio_actual = campos[6].toDoubleOrNull() ?: 0.0,
+                        stock_actual = campos[7].toDoubleOrNull() ?: 0.0,
+                        descuento = campos[8].trim(),
                         ultima_actualizacion = System.currentTimeMillis(),
-                        campo_adicional = if (campos.size > 7) campos[7].trim() else null
+                        estado = if (campos[10].toInt() == 0 ) "Activo" else "Anulado",
                     )
                 }
 

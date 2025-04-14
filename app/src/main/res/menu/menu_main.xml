@@ -6,13 +6,15 @@
         android:id="@+id/action_search"
         android:icon="@android:drawable/ic_menu_search"
         android:title="Buscar"
+        android:iconTint="@android:color/white"
         app:actionViewClass="android.widget.SearchView"
-        app:showAsAction="always|collapseActionView" />
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/action_sync"
         android:icon="@android:drawable/ic_popup_sync"
         android:title="Sincronizar"
+        android:visible="false"
         app:showAsAction="ifRoom" />
 
 </menu>

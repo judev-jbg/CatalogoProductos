@@ -14,23 +14,26 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:title="Catálogo de Productos"
+            android:layout_height="wrap_content"
+            android:background="@color/primary"
+            app:title="SELK"
+
+            app:titleTextAppearance="@style/TextAppearance.AppCompat.Large"
             app:titleTextColor="@android:color/white" />
 
         <TextView
             android:id="@+id/tvLastUpdate"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#EEEEEE"
-            android:padding="4dp"
+            style="@style/TextAppearance.App.UltimaActualizacion"
+            android:padding="6dp"
             android:gravity="center"
-            android:textSize="12sp"
             tools:text="Última actualización: 15/03/2023 14:30" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/constraintLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
@@ -77,6 +80,7 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:contentDescription="Sincronizar"
+        app:backgroundTint="@color/primary"
         app:srcCompat="@android:drawable/ic_popup_sync" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
