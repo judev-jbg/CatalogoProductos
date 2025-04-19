@@ -36,7 +36,7 @@ class ProductoAdapter(
         holder.itemView.alpha = 0f
         holder.itemView.animate()
             .alpha(1f)
-            .setDuration(300)
+            .setDuration(150)
             .setInterpolator(AccelerateDecelerateInterpolator())
             .start()
     }
@@ -92,7 +92,13 @@ class ProductoAdapter(
             }
 
             override fun areContentsTheSame(oldItem: ProductoEntity, newItem: ProductoEntity): Boolean {
-                return oldItem == newItem
+                // Check all relevant fields that should trigger a visual update
+                return oldItem.id_producto == newItem.id_producto &&
+                        oldItem.referencia == newItem.referencia &&
+                        oldItem.descripcion == newItem.descripcion &&
+                        oldItem.precio_actual == newItem.precio_actual &&
+                        oldItem.stock_actual == newItem.stock_actual &&
+                        oldItem.estado == newItem.estado
             }
         }
     }

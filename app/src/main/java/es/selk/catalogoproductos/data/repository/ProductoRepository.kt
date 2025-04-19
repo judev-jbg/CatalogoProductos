@@ -17,11 +17,20 @@ class ProductoRepository(
     // Búsqueda de productos
     fun searchProductos(query: String): Flow<List<ProductoEntity>> {
         // Si la consulta parece un ID de producto (contiene doble espacio)
-        return if (query.contains("  ")) {
-            productoDao.searchProductos(query)
+        val normalizedQuery = query.trim().replace("\\s+".toRegex(), " ")
+
+        return if (normalizedQuery.contains("  ")) {
+            productoDao.searchProductos(normalizedQuery)
         } else {
             // Usar FTS para búsqueda por descripción
-            productoDao.searchProductosFTS(query)
+            try {
+                // Escape special FTS characters to prevent syntax errors
+                val safeQuery = normalizedQuery.replace("[\"*]".toRegex(), " ")
+                productoDao.searchProductosFTS(safeQuery + "*")  // Add wildcard for partial matches
+            } catch (e: Exception) {
+                // Fallback to regular search if FTS fails
+                productoDao.searchProductos(normalizedQuery)
+            }
         }
     }
 

@@ -11,10 +11,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProductoDao {
-    @Query("SELECT * FROM productos LIMIT 10")
+    @Query("SELECT * FROM productos LIMIT 20")
     fun getAllProductosFlow(): Flow<List<ProductoEntity>>
 
-    @Query("SELECT * FROM productos WHERE referencia LIKE :query || '%' OR descripcion LIKE '%' || :query || '%' LIMIT 100")
+    @Query("SELECT * FROM productos WHERE referencia LIKE :query || '%' OR descripcion LIKE '%' || :query || '%' ORDER BY referencia LIMIT 100")
     fun searchProductos(query: String): Flow<List<ProductoEntity>>
 
     @Query("SELECT * FROM productos WHERE referencia = :referencia")
@@ -36,9 +36,10 @@ interface ProductoDao {
     suspend fun deleteAllProductos()
 
 
-    @Query("SELECT * FROM productos " +
-            "JOIN productos_fts ON productos.rowid = productos_fts.rowid " +
-            "WHERE productos_fts MATCH :query LIMIT 50")
+    @Query("SELECT p.* FROM productos p " +
+            "JOIN productos_fts ON p.rowid = productos_fts.rowid " +
+            "WHERE productos_fts MATCH :query " +
+            "ORDER BY referencia LIMIT 50")
     fun searchProductosFTS(query: String): Flow<List<ProductoEntity>>
 
     @Query("SELECT COUNT(*) FROM productos")

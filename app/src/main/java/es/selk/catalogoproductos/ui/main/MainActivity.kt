@@ -7,12 +7,14 @@ import android.graphics.PorterDuff
 import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.SearchView
 import android.widget.TextView
 import android.widget.Toast
@@ -100,18 +102,6 @@ class MainActivity : AppCompatActivity() {
 
         productoViewModel = ViewModelProvider(this, factory)[ProductoViewModel::class.java]
 
-        lifecycleScope.launch {
-            try {
-                // Solo cargamos datos si la base de datos está vacía
-                val productos = productoViewModel.getProductCount()
-                if (productos == 0) {
-                    syncRepository.cargarDatosIniciales(applicationContext)
-                    Toast.makeText(this@MainActivity, "Datos iniciales cargados", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, "Error al cargar datos: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 
     private fun setupRecyclerView() {
@@ -181,15 +171,22 @@ class MainActivity : AppCompatActivity() {
                 // Observar estado de carga
                 launch {
                     productoViewModel.isLoading.collectLatest { isLoading ->
-                        binding.progressBar.isVisible = isLoading
+                        binding.progressBar.isVisible = isLoading && !syncViewModel.isSyncing.value
                     }
                 }
 
                 // Observar estado de sincronización
                 launch {
                     syncViewModel.isSyncing.collectLatest { isSyncing ->
-                        binding.progressBar.isVisible = isSyncing
+                        // Show overlay during sync
+                        binding.syncOverlay.isVisible = isSyncing
                         binding.fabSync.isEnabled = !isSyncing
+
+                        // If sync just completed, refresh the product list
+                        if (!isSyncing && syncViewModel.justCompletedSync) {
+                            syncViewModel.justCompletedSync = false
+                            productoViewModel.refreshProducts()
+                        }
                     }
                 }
 
@@ -221,6 +218,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
 
@@ -229,40 +227,44 @@ class MainActivity : AppCompatActivity() {
 
         searchView.queryHint = "Referencia o descripción del producto"
 
+        // Configure search text appearance
         val searchEditText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
         searchEditText?.apply {
-            // Cambiar color del texto
             setTextColor(ContextCompat.getColor(this@MainActivity, R.color.on_primary))
-            // Cambiar color del hint
             setHintTextColor(ContextCompat.getColor(this@MainActivity, R.color.on_primary))
-
         }
 
-        // Cambiar color del icono de búsqueda
+        // Search icon color
         val searchIcon = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_button)
         searchIcon?.setColorFilter(ContextCompat.getColor(this, R.color.on_primary), PorterDuff.Mode.SRC_IN)
 
-        // Cambiar color del icono de cerrar
+        // Get close button reference
         val closeIcon = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_close_btn)
         closeIcon?.setColorFilter(ContextCompat.getColor(this, R.color.on_primary), PorterDuff.Mode.SRC_IN)
 
+        // Track if search is empty to change close button behavior
+        var isSearchEmpty = true
+
+        // Custom OnCloseListener to handle search view closing
+        searchView.setOnCloseListener {
+            productoViewModel.setSearchQuery("")
+            false // Let the system handle the default closing behavior
+        }
+
+        // Handle empty search when action view is collapsed
         searchItem.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
             override fun onMenuItemActionExpand(item: MenuItem): Boolean {
                 searchView.requestFocus()
-                // Muestra el teclado virtual
                 val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(searchView.findFocus(), InputMethodManager.SHOW_IMPLICIT)
                 return true
             }
 
             override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
+                productoViewModel.setSearchQuery("") // Reset search to show all products
                 return true
             }
         })
-        searchItem.setOnMenuItemClickListener {
-            searchItem.expandActionView()
-            true
-        }
 
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
@@ -274,9 +276,22 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                if (!newText.isNullOrBlank() && newText.length >= 3) {
-                    productoViewModel.setSearchQuery(newText)
+                // Update close button behavior based on text content
+                isSearchEmpty = newText.isNullOrBlank()
+
+                // Dynamically change the close button behavior
+                closeIcon?.setOnClickListener {
+                    if (isSearchEmpty) {
+                        // If empty, collapse the search view
+                        searchItem.collapseActionView()
+                    } else {
+                        // If not empty, just clear the text
+                        searchView.setQuery("", false)
+                    }
                 }
+
+                // Always update search query
+                productoViewModel.setSearchQuery(newText ?: "")
                 return true
             }
         })

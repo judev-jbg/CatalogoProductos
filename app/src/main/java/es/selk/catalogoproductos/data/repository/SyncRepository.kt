@@ -47,7 +47,8 @@ class SyncRepository(
     suspend fun checkUpdates(): Comparable<Nothing> {
         return withContext(Dispatchers.IO) {
             try {
-                val ultimoTimestamp = ultimaActualizacionDao.getUltimoTimestamp() ?: 0
+                val ultimoTimestamp = ultimaActualizacionDao.getUltimoTimestamp() ?: 0L
+                Log.d("SyncRepository","Ultimo timestamp DAO: $ultimoTimestamp")
 
                 // Descargar archivo de versión
                 val url = URL(DRIVE_VERSION_DOWNLOAD_URL)
@@ -65,19 +66,33 @@ class SyncRepository(
 
                 // Verificar si hay una versión más reciente
 
-                if( (version?.timestamp ?: 0) > ultimoTimestamp) {
-                    Log.d("SyncRepository", "Hay una actualización disponible. Timestamp de version: ${version?.timestamp}")
-                    versionUltimaActualizacion = version!!.version
-                    timestampUltimaActualizacion = version.timestamp
+                // Obtener el timestamp remoto (con validación)
+                val remoteTimestamp = version?.timestamp ?: 0L
+                // Guardar la información de versión para usarla después
+                if (remoteTimestamp > 0) {
+                    versionUltimaActualizacion = version?.version ?: "1.0.0"
+                    timestampUltimaActualizacion = remoteTimestamp
+
+                    Log.d("SyncRepository", "Version remota: $versionUltimaActualizacion, timestamp: $timestampUltimaActualizacion")
+                    Log.d("SyncRepository", "Último timestamp local: $ultimoTimestamp")
                 } else {
-                    Log.d("SyncRepository", "No hay actualizaciones disponibles. Timestamp de version: ${version?.timestamp}")
+                    Log.w("SyncRepository", "Timestamp inválido recibido: $remoteTimestamp")
                 }
 
-                (version?.timestamp ?: 0) > ultimoTimestamp
+                // Verificar si hay una versión más reciente
+                val hayActualizacion = remoteTimestamp > ultimoTimestamp
+
+                if (hayActualizacion) {
+                    Log.d("SyncRepository", "Nueva version disponible. Remote: $remoteTimestamp > Local: $ultimoTimestamp")
+                } else {
+                    Log.d("SyncRepository", "No hay nueva version disponible. Remote: $remoteTimestamp <= Local: $ultimoTimestamp")
+                }
+
+                return@withContext hayActualizacion
 
             } catch (e: Exception) {
                 Log.e("SyncRepository", "Error verificando actualizaciones", e)
-                false
+                return@withContext false
             }
         }
     }
@@ -153,14 +168,19 @@ class SyncRepository(
                 if (productosEntities.isNotEmpty()) {
                     productoDao.insertProductos(productosEntities)
 
+                    val timestampToSave = if (timestampUltimaActualizacion > 0)
+                        timestampUltimaActualizacion
+                    else
+                        System.currentTimeMillis()
+
                     ultimaActualizacionDao.insertUltimaActualizacion(
                         UltimaActualizacionEntity(
-                            timestamp = timestampUltimaActualizacion,
-                            version = versionUltimaActualizacion
+                            timestamp = timestampToSave,
+                            version = versionUltimaActualizacion.ifBlank { "1.0.0" }
                         )
                     )
 
-
+                    Log.d("SyncRepository", "Sincronización completa. Timestamp guardado: $timestampToSave")
                     true
                 } else {
                     Log.w("SyncRepository", "No hay productos válidos para insertar")
@@ -208,62 +228,7 @@ class SyncRepository(
             return emptyList()
         }
     }
-    
-    suspend fun cargarDatosIniciales(context: Context) {
-        withContext(Dispatchers.IO) {
-            try {
-                // Leer el archivo JSON de assets
-                val jsonString = context.assets.open("productos_inicial.json").bufferedReader().readText()
 
-                // Configurar Moshi para deserializar el JSON
-                val moshi = Moshi.Builder()
-                    .add(KotlinJsonAdapterFactory())
-                    .build()
-
-                // Crear el adaptador para una lista de productos
-                val type = Types.newParameterizedType(
-                    List::class.java,
-                    ProductoResponse::class.java
-                )
-                val adapter = moshi.adapter<List<ProductoResponse>>(type)
-
-                // Convertir JSON a lista de objetos
-                val productos = adapter.fromJson(jsonString) ?: listOf()
-
-                // Mapear a entidades y guardar en la base de datos
-                val productosEntities = productos.map {
-                    ProductoEntity(
-                        id_producto = 0,
-                        referencia = it.referencia,
-                        descripcion = it.descripcion,
-                        precio_actual = it.precioActual,
-                        stock_actual = it.stockActual,
-                        familia = it.familia,
-                        descuento = it.descuento,
-                        ultima_actualizacion = it.ultimaActualizacion,
-                        cantidad_bulto = it.cantidadBulto,
-                        unidad_venta = it.unidadVenta,
-                        estado = if (it.estado.toInt() == 0) "Activo" else "Anulado"
-                        // Otros campos que necesites
-                    )
-                }
-
-                // Insertar en la base de datos
-                productoDao.insertProductos(productosEntities)
-                Log.d("SyncRepository", "Productos insertados: ${productosEntities.size}")
-
-                // Actualizar timestamp de última actualización
-                ultimaActualizacionDao.insertUltimaActualizacion(
-                    UltimaActualizacionEntity(
-                        timestamp = System.currentTimeMillis(),
-                        version = "1.0.0"
-                    )
-                )
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-        }
-    }
 
     // Helper para convertir ProductoResponse a ProductoEntity
     private fun ProductoResponse.toProductoEntity(): ProductoEntity {

@@ -17,6 +17,7 @@ import java.util.Locale
 class SyncViewModel(
     private val syncRepository: SyncRepository
 ) : ViewModel() {
+    var justCompletedSync = false
     // Estado de última actualización
     private val _ultimaActualizacion = MutableStateFlow<UltimaActualizacionEntity?>(null)
     val ultimaActualizacion: StateFlow<UltimaActualizacionEntity?> = _ultimaActualizacion
@@ -72,12 +73,19 @@ class SyncViewModel(
             _error.value = null
 
             try {
-                val success = syncRepository.sincronizarCambios()
-                if (success) {
-                    loadLastUpdate()
-                    _updateAvailable.value = false
+                val updateAvailable = syncRepository.checkUpdates()
+
+                if (updateAvailable as Boolean) {
+                    val success = syncRepository.sincronizarCambios()
+                    if (success) {
+                        justCompletedSync = true
+                        loadLastUpdate()
+                        _updateAvailable.value = false
+                    } else {
+                        _error.value = "No se pudo sincronizar"
+                    }
                 } else {
-                    _error.value = "No se pudo sincronizar"
+                    _error.value = "No hay actualizaciones disponibles"
                 }
             } catch (e: Exception) {
                 _error.value = "Error de sincronización: ${e.message}"

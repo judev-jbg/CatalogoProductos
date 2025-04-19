@@ -42,6 +42,7 @@ class ProductDetailActivity : AppCompatActivity() {
             tvPrecio.text = priceFormat.format(producto.precio_actual)
             tvDescuento.text = producto.descuento
             tvUltimaActualizacion.text = dateFormat.format(Date(producto.ultima_actualizacion))
+            tvEstado.text = producto.estado
 
             // Título de la toolbar
             toolbar.title = "Detalle: ${producto.referencia}"

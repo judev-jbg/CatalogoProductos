@@ -46,23 +46,58 @@ class ProductoViewModel(
         _searchQuery.value = query
     }
 
+    fun refreshProducts() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Clear search to show all products
+                _searchQuery.value = ""
+
+                // Load fresh products from database
+                productoRepository.getAllProductos()
+                    .catch {
+                        _error.value = it.message
+                        emit(emptyList())
+                    }
+                    .collect { productos ->
+                        _allProducts.value = productos
+                        _searchResults.value = productos
+                        _isLoading.value = false
+                    }
+            } catch (e: Exception) {
+                _error.value = "Error refreshing products: ${e.message}"
+                _isLoading.value = false
+            }
+        }
+    }
+
 
     init {
         // Configurar flujo reactivo para búsqueda en tiempo real
         viewModelScope.launch {
             searchQuery
                 .debounce(300) // Esperar 300ms para evitar múltiples consultas
-                .filter { it.length >= 3 } // Mínimo 3 caracteres
                 .distinctUntilChanged() // Solo procesar si cambia la consulta
                 .flatMapLatest { query ->
+                    _isLoading.value = true
                     if (query.isBlank()) {
-                        flowOf(emptyList())
-                    } else {
-                        _isLoading.value = true
+                        productoRepository.getAllProductos()
+                            .catch {
+                                _error.value = it.message
+                                emit(emptyList())
+                            }
+                    }else if (query.length >= 6) {
+                        // Search with at least 6 characters
                         productoRepository.searchProductos(query)
                             .catch {
                                 _error.value = it.message
-                                _isLoading.value = false
+                                emit(emptyList())
+                            }
+                    } else {
+                        // For very short queries, show all products
+                        productoRepository.getAllProductos()
+                            .catch {
+                                _error.value = it.message
                                 emit(emptyList())
                             }
                     }
@@ -73,7 +108,12 @@ class ProductoViewModel(
                 }
         }
         viewModelScope.launch {
+            _isLoading.value = true
             productoRepository.getAllProductos()
+                .catch {
+                    _error.value = it.message
+                    emit(emptyList())
+                }
                 .collect { productos ->
                     _allProducts.value = productos
 
@@ -81,6 +121,7 @@ class ProductoViewModel(
                     if (_searchQuery.value.isBlank()) {
                         _searchResults.value = productos
                     }
+                    _isLoading.value = false
                 }
         }
 
