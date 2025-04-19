@@ -80,10 +80,14 @@ class SyncRepository(
                 }
 
                 // Verificar si hay una versión más reciente
-                val hayActualizacion = remoteTimestamp > ultimoTimestamp
+                val hayActualizacion = ultimoTimestamp == 0L || remoteTimestamp > ultimoTimestamp
 
                 if (hayActualizacion) {
-                    Log.d("SyncRepository", "Nueva version disponible. Remote: $remoteTimestamp > Local: $ultimoTimestamp")
+                    if (ultimoTimestamp == 0L) {
+                        Log.d("SyncRepository", "Base de datos vacía. Se requiere sincronización inicial.")
+                    } else {
+                        Log.d("SyncRepository", "Nueva versión disponible. Remote: $remoteTimestamp > Local: $ultimoTimestamp")
+                    }
                 } else {
                     Log.d("SyncRepository", "No hay nueva version disponible. Remote: $remoteTimestamp <= Local: $ultimoTimestamp")
                 }

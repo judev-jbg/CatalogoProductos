@@ -82,7 +82,7 @@ class SyncViewModel(
                         loadLastUpdate()
                         _updateAvailable.value = false
                     } else {
-                        _error.value = "No se pudo sincronizar"
+                        _error.value = "No se pudo sincronizar los datos"
                     }
                 } else {
                     _error.value = "No hay actualizaciones disponibles"

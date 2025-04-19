@@ -49,21 +49,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "productos_database"
                 )
-                    .addCallback(object : Callback() {
-                        override fun onCreate(db: SupportSQLiteDatabase) {
-                            super.onCreate(db)
-                            // Inicialización de la base de datos si es necesario
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val timestamp = System.currentTimeMillis()
-                                INSTANCE?.ultimaActualizacionDao()?.insertUltimaActualizacion(
-                                    UltimaActualizacionEntity(
-                                        timestamp = timestamp,
-                                        version = "1.0.0"
-                                    )
-                                )
-                            }
-                        }
-                    })
                     .fallbackToDestructiveMigration()
                     .build()
 
