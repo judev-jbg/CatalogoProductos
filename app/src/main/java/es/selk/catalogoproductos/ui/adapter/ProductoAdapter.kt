@@ -1,7 +1,6 @@
 package es.selk.catalogoproductos.ui.adapter
 
-import android.app.ActivityOptions
-import android.content.Intent
+
 import android.graphics.Color
 import android.util.Log
 import android.view.LayoutInflater
@@ -19,6 +18,7 @@ import java.util.Locale
 
 class ProductoAdapter(
     private val onItemClick: (ProductoEntity) -> Unit
+
 ) : ListAdapter<ProductoEntity, ProductoAdapter.ProductoViewHolder>(DIFF_CALLBACK) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductoViewHolder {
@@ -30,15 +30,37 @@ class ProductoAdapter(
         return ProductoViewHolder(binding, onItemClick)
     }
 
+    override fun submitList(list: List<ProductoEntity>?) {
+        val newList = list?.toList() ?: emptyList()
+        super.submitList(newList)
+        {
+            // Este callback se ejecuta cuando la operación DiffUtil está completa
+            val recyclerView = currentList.let { recyclerView }
+            recyclerView?.scrollToPosition(0)
+        }
+    }
+
     override fun onBindViewHolder(holder: ProductoViewHolder, position: Int) {
         Log.d("ProductoAdapter", "Binding producto: ${getItem(position).descripcion}")
         holder.bind(getItem(position))
-        holder.itemView.alpha = 0f
+        holder.itemView.alpha = 0.7f
         holder.itemView.animate()
             .alpha(1f)
-            .setDuration(150)
+            .setDuration(100)
             .setInterpolator(AccelerateDecelerateInterpolator())
             .start()
+    }
+
+    private var recyclerView: RecyclerView? = null
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        this.recyclerView = recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        this.recyclerView = null
     }
 
 

@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit
 import androidx.work.*
 import java.util.*
 import androidx.core.content.edit
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainApplication : Application() {
 
@@ -33,6 +34,7 @@ class MainApplication : Application() {
     }
 
     private fun setupImmediateSync() {
+        isInitialSyncRunning.value = true
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -90,5 +92,10 @@ class MainApplication : Application() {
             ExistingPeriodicWorkPolicy.REPLACE,
             dailySyncRequest
         )
+    }
+
+    companion object {
+        // Para compartir el estado de sincronización inicial
+        val isInitialSyncRunning = MutableStateFlow(false)
     }
 }

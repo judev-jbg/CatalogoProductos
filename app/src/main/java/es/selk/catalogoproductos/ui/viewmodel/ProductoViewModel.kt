@@ -1,5 +1,6 @@
 package es.selk.catalogoproductos.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -44,28 +45,37 @@ class ProductoViewModel(
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+
+        // Para búsquedas inmediatas - esto ayuda a evitar retrasos
+        if (query.isBlank()) {
+            viewModelScope.launch {
+                _searchResults.value = _allProducts.value
+            }
+        }
     }
 
     fun refreshProducts() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Clear search to show all products
-                _searchQuery.value = ""
+                Log.d("ProductoViewModel", "Iniciando refrescado de productos")
 
-                // Load fresh products from database
+                // Forzar recolección de productos más recientes
                 productoRepository.getAllProductos()
-                    .catch {
-                        _error.value = it.message
+                    .catch { e ->
+                        Log.e("ProductoViewModel", "Error refrescando productos", e)
+                        _error.value = e.message
                         emit(emptyList())
                     }
                     .collect { productos ->
+                        Log.d("ProductoViewModel", "Productos refrescados: ${productos.size}")
                         _allProducts.value = productos
                         _searchResults.value = productos
                         _isLoading.value = false
                     }
             } catch (e: Exception) {
-                _error.value = "Error refreshing products: ${e.message}"
+                Log.e("ProductoViewModel", "Error general refrescando productos", e)
+                _error.value = "Error refrescando productos: ${e.message}"
                 _isLoading.value = false
             }
         }

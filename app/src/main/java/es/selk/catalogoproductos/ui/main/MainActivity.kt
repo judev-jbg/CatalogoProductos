@@ -29,6 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import es.selk.catalogoproductos.MainApplication
 import es.selk.catalogoproductos.R
 import es.selk.catalogoproductos.data.local.database.AppDatabase
 import es.selk.catalogoproductos.data.repository.ProductoRepository
@@ -67,7 +68,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var productoViewModel: ProductoViewModel
 
     private val syncViewModel: SyncViewModel by viewModels {
-        SyncViewModel.Factory(syncRepository)
+        SyncViewModel.Factory(syncRepository, applicationContext)
     }
 
     private val productoAdapter = ProductoAdapter { producto ->
@@ -91,6 +92,17 @@ class MainActivity : AppCompatActivity() {
 
         setupRecyclerView()
         setupListeners()
+
+        lifecycleScope.launch {
+            MainApplication.isInitialSyncRunning.collect { isRunning ->
+                if (isRunning) {
+                    binding.syncOverlay.visibility = View.VISIBLE
+                    syncViewModel.checkInitialSyncStatus()
+                }
+            }
+        }
+
+
         observeViewModel()
 
         val factory = object : ViewModelProvider.Factory {
@@ -107,12 +119,44 @@ class MainActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         val columnCount = resources.getInteger(R.integer.grid_column_count)
         val layoutManager = GridLayoutManager(this, columnCount)
-        binding.recyclerView.layoutManager = layoutManager
-        binding.recyclerView.adapter = productoAdapter
+        layoutManager.scrollToPositionWithOffset(0, 0)
+
+        // Limpiar decoraciones existentes y agregar una nueva
+        binding.recyclerView.clearItemDecorations()
 
         val spacing = resources.getDimensionPixelSize(R.dimen.card_margin)
         binding.recyclerView.addItemDecoration(GridSpacingItemDecoration(columnCount, spacing, true))
 
+        binding.recyclerView.layoutManager = layoutManager
+        binding.recyclerView.adapter = productoAdapter
+
+        binding.recyclerView.scrollToPosition(0)
+
+        // Agregar este listener para forzar relayout cuando cambia la lista
+        productoAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onChanged() {
+                binding.recyclerView.post { binding.recyclerView.invalidateItemDecorations() }
+            }
+
+            override fun onItemRangeChanged(positionStart: Int, itemCount: Int) {
+                binding.recyclerView.post { binding.recyclerView.invalidateItemDecorations() }
+            }
+
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                binding.recyclerView.post { binding.recyclerView.invalidateItemDecorations() }
+            }
+
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+                binding.recyclerView.post { binding.recyclerView.invalidateItemDecorations() }
+            }
+        })
+    }
+
+    // Agregar esta extensión
+    fun RecyclerView.clearItemDecorations() {
+        while (itemDecorationCount > 0) {
+            removeItemDecorationAt(0)
+        }
     }
 
 
@@ -128,7 +172,13 @@ class MainActivity : AppCompatActivity() {
             parent: RecyclerView,
             state: RecyclerView.State
         ) {
+            val adapter = parent.adapter ?: return
+            val totalItems = adapter.itemCount
+            if (totalItems == 0) return
+
             val position = parent.getChildAdapterPosition(view)
+            if (position == RecyclerView.NO_POSITION) return
+
             val column = position % spanCount
 
             if (includeEdge) {
@@ -163,8 +213,12 @@ class MainActivity : AppCompatActivity() {
                 launch {
                     productoViewModel.searchResults.collectLatest { productos ->
                         productoAdapter.submitList(productos)
-                        binding.tvEmpty.isVisible = productos.isEmpty()
                         Log.d("MainActivity", "Productos cargados: ${productos.size}")
+                        binding.tvEmpty.isVisible = productos.isEmpty() && !syncViewModel.isSyncing.value
+                        binding.recyclerView.isVisible = productos.isNotEmpty()
+                        if (productos.isNotEmpty()) {
+                            binding.recyclerView.scrollToPosition(0)
+                        }
                     }
                 }
 
@@ -178,14 +232,21 @@ class MainActivity : AppCompatActivity() {
                 // Observar estado de sincronización
                 launch {
                     syncViewModel.isSyncing.collectLatest { isSyncing ->
+                        Log.d("MainActivity", "UI: Estado de sincronización: $isSyncing")
                         // Show overlay during sync
                         binding.syncOverlay.isVisible = isSyncing
                         binding.fabSync.isEnabled = !isSyncing
 
                         // If sync just completed, refresh the product list
-                        if (!isSyncing && syncViewModel.justCompletedSync) {
-                            syncViewModel.justCompletedSync = false
-                            productoViewModel.refreshProducts()
+                        if (isSyncing) {
+                            binding.tvEmpty.isVisible = false
+                        } else {
+                            // Si terminó la sincronización y hay que refrescar
+                            if (syncViewModel.justCompletedSync) {
+                                syncViewModel.justCompletedSync = false
+                                Log.d("MainActivity", "UI: Sincronización completa, refrescando productos")
+                                productoViewModel.refreshProducts()
+                            }
                         }
                     }
                 }

@@ -1,10 +1,18 @@
 package es.selk.catalogoproductos.ui.viewmodel
 
+import android.annotation.SuppressLint
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.await
+import es.selk.catalogoproductos.MainApplication
 import es.selk.catalogoproductos.data.local.entity.UltimaActualizacionEntity
 import es.selk.catalogoproductos.data.repository.SyncRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -15,7 +23,8 @@ import java.util.Date
 import java.util.Locale
 
 class SyncViewModel(
-    private val syncRepository: SyncRepository
+    private val syncRepository: SyncRepository,
+    private val context: Context
 ) : ViewModel() {
     var justCompletedSync = false
     // Estado de última actualización
@@ -107,14 +116,56 @@ class SyncViewModel(
         _fechaUltimaActualizacion.value = dateFormat.format(Date(timestamp))
     }
 
+    // Agregar función para verificar estado de sincronización inicial
+    @SuppressLint("RestrictedApi")
+    fun checkInitialSyncStatus() {
+        viewModelScope.launch {
+            // Esperar 2 segundos para permitir que WorkManager inicie
+            delay(2000)
+
+            // Si se está ejecutando syncWorker
+
+            val workManager = WorkManager.getInstance(context)
+            val workInfoList = workManager.getWorkInfosForUniqueWork("initial_sync").await()
+
+            val isRunning = workInfoList.any {
+                it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
+            }
+
+            if (isRunning) {
+                _isSyncing.value = true
+
+                // Esperar a que termine
+                val workInfo = workInfoList.first()
+                workManager.getWorkInfoByIdLiveData(workInfo.id).asFlow().collect { info ->
+                    if (info.state.isFinished) {
+                        _isSyncing.value = false
+                        MainApplication.isInitialSyncRunning.value = false
+                        justCompletedSync = true
+                        refreshData()
+                    }
+                }
+            } else {
+                MainApplication.isInitialSyncRunning.value = false
+            }
+        }
+    }
+
+    private fun refreshData() {
+        viewModelScope.launch {
+            loadLastUpdate()
+        }
+    }
+
     // Factory para crear el ViewModel con dependencias
     class Factory(
-        private val syncRepository: SyncRepository
+        private val syncRepository: SyncRepository,
+        private val context: Context
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(SyncViewModel::class.java)) {
-                return SyncViewModel(syncRepository) as T
+                return SyncViewModel(syncRepository, context) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

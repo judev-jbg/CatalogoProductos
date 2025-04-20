@@ -22,12 +22,19 @@ class SyncWorker(
         )
 
         return try {
+            Log.d("SyncWorker", "Iniciando trabajo de sincronización")
             val updateAvailable = syncRepository.checkUpdates()
 
             if (updateAvailable as Boolean) {
-                Log.d("SyncWorker", "Hay una actualización disponible")
+                Log.d("SyncWorker", "Hay una actualización disponible, iniciando sincro")
                 val success = syncRepository.sincronizarCambios()
-                if (success) Result.success() else Result.retry()
+                if (success) {
+                    Log.d("SyncWorker", "Sincronización completada exitosamente")
+                    Result.success()
+                } else {
+                    Log.d("SyncWorker", "Sincronización falló, reintentando")
+                    Result.retry()
+                }
             } else {
                 Log.d("SyncWorker", "No hay actualizaciones disponibles")
                 Result.success()
