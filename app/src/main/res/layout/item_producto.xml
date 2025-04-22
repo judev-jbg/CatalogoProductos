@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="@dimen/card_margin"
+    style="@style/TextAppearance.App.Card"
     app:cardCornerRadius="@dimen/card_corner_radius"
     app:cardElevation="@dimen/card_elevation">
 
@@ -27,16 +27,17 @@
 
         <TextView
             android:id="@+id/tvDescripcion"
+            style="@style/TextAppearance.App.Description"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            style="@style/TextAppearance.App.Description"
+            android:layout_marginTop="@dimen/margin_small"
+            android:layout_marginEnd="@dimen/margin_medium"
             android:ellipsize="end"
+            android:lineSpacingMultiplier="1.3"
             android:maxLines="2"
             app:layout_constraintEnd_toStartOf="@+id/tvPrecio"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tvId"
-            android:layout_marginTop="@dimen/margin_small"
-            android:layout_marginEnd="@dimen/margin_medium"
             tools:text="DESCRIPCION DEL PRODUCTO QUE PUEDE SER LARGA" />
 
         <TextView
@@ -55,7 +56,8 @@
             android:id="@+id/tvStock"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="14dp"
+            android:textSize="16sp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tvFamilia"
             tools:text="Stock: 100" />
@@ -64,7 +66,8 @@
             android:id="@+id/tvDescuento"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="30dp"
+            android:textSize="16sp"
             app:layout_constraintStart_toEndOf="@+id/tvCantidadBulto"
             app:layout_constraintTop_toTopOf="@+id/tvStock"
             tools:text="Descuento: A000"
@@ -76,6 +79,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:textColor="@color/material_on_surface_emphasis_medium"
+            android:textSize="16sp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tvStock"
             tools:text="Cantidad bulto: 2" />
@@ -84,8 +88,9 @@
             android:id="@+id/tvUnidadVenta"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="30dp"
             android:textColor="@color/material_on_surface_emphasis_medium"
+            android:textSize="16sp"
             app:layout_constraintStart_toEndOf="@+id/tvCantidadBulto"
             app:layout_constraintTop_toTopOf="@+id/tvCantidadBulto"
             tools:text="Unidad venta: 2"
@@ -96,6 +101,7 @@
             style="@style/TextAppearance.App.Estado"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:textSize="14sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="Activo"
@@ -103,14 +109,13 @@
 
         <TextView
             android:id="@+id/tvPrecio"
+            style="@style/TextAppearance.App.Price"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            style="@style/TextAppearance.App.Price"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="99.99 €" />
-
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

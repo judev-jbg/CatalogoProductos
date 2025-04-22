@@ -75,15 +75,14 @@ class ProductoAdapter(
             binding.apply {
                 tvId.text = producto.referencia
                 tvDescripcion.text = producto.descripcion
-                tvCantidadBulto.text = "Cantidad bulto: ${producto.cantidad_bulto}"
+                tvCantidadBulto.text = "Cantidad bulto: ${producto.cantidad_bulto.toInt()}"
                 tvUnidadVenta.text = "Unidad venta: ${producto.unidad_venta}"
                 tvFamilia.text = producto.familia
                 tvPrecio.text = priceFormat.format(producto.precio_actual)
-                val stockText = "Stock: ${producto.stock_actual}"
+                val stockText = "Stock: ${producto.stock_actual.toInt()}"
                 tvStock.text = stockText
                 tvStock.setTextColor(when {
-                    producto.stock_actual > 10.0 -> Color.parseColor("#FFA000") // Verde
-                    producto.stock_actual > 0.0 -> Color.parseColor("#FFA000")  // Ámbar
+                    producto.stock_actual > 1.0 -> Color.parseColor("#4CAF50") // Verde
                     else -> Color.parseColor("#CF6679")  // Rojo
                 })
 
@@ -94,7 +93,7 @@ class ProductoAdapter(
                     tvDescuento.text = "Descuento: ${producto.descuento}"
                 }
 
-                tvEstado.text = producto.estado
+                tvEstado.text = producto.estado.uppercase()
                 tvEstado.setTextColor(when {
                     producto.estado == "Activo" -> ContextCompat.getColor(binding.root.context, R.color.color_estado_activo)
                     producto.estado == "Anulado" -> ContextCompat.getColor(binding.root.context, R.color.color_estado_anulado)

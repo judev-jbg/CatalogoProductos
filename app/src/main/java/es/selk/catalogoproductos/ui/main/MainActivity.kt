@@ -7,16 +7,13 @@ import android.graphics.PorterDuff
 import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
-import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.SearchView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -51,16 +48,12 @@ class MainActivity : AppCompatActivity() {
     private val productoRepository by lazy {
         ProductoRepository(
             db.productoDao(),
-            db.historialPrecioDao(),
-            db.historialStockDao()
         )
     }
 
     private val syncRepository by lazy {
         SyncRepository(
             db.productoDao(),
-            db.historialPrecioDao(),
-            db.historialStockDao(),
             db.ultimaActualizacionDao()
         )
     }
@@ -286,7 +279,7 @@ class MainActivity : AppCompatActivity() {
         val searchItem = menu.findItem(R.id.action_search)
         val searchView = searchItem.actionView as SearchView
 
-        searchView.queryHint = "Referencia o descripción del producto"
+        searchView.queryHint = "Referencia, descripción o familia"
 
         // Configure search text appearance
         val searchEditText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)

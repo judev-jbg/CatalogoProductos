@@ -8,9 +8,6 @@ import androidx.room.Fts4
 import androidx.room.PrimaryKey
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.sqlite.db.SupportSQLiteDatabase
-import es.selk.catalogoproductos.data.local.dao.HistorialPrecioDao
-import es.selk.catalogoproductos.data.local.dao.HistorialStockDao
 import es.selk.catalogoproductos.data.local.dao.ProductoDao
 import es.selk.catalogoproductos.data.local.dao.UltimaActualizacionDao
 import es.selk.catalogoproductos.data.local.entity.HistorialPrecioEntity
@@ -34,8 +31,6 @@ import kotlinx.coroutines.launch
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun productoDao(): ProductoDao
-    abstract fun historialPrecioDao(): HistorialPrecioDao
-    abstract fun historialStockDao(): HistorialStockDao
     abstract fun ultimaActualizacionDao(): UltimaActualizacionDao
 
     companion object {
@@ -66,6 +61,7 @@ data class ProductoFTS(
     @PrimaryKey
     val rowId: Int,
     val referencia: String,
-    val descripcion: String
+    val descripcion: String,
+    val familia: String
 )
 

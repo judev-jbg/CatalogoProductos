@@ -18,7 +18,7 @@
     <color name="on_surface">#FFFFFF</color>
 
     <!-- Colores específicos adaptados -->
-    <color name="price_color">#FFA000</color>    <!-- Azul más claro para precios -->
+    <color name="price_color">#C5326F</color>   <!-- Azul para precios -->
     <color name="background_price_color">#544A3B</color>   <!-- Azul para precios -->
     <color name="discount_color">#81C784</color> <!-- Verde más claro para descuentos -->
     <color name="background_stock">#4B564B</color>    <!-- Verde para stock alto -->
@@ -26,4 +26,5 @@
     <color name="color_bar_actualizacion">#CCCCCC</color>   <!-- Rojo para stock vacío -->
     <color name="color_estado_anulado">#CE7886</color>   <!-- Rojo para stock vacío -->
     <color name="color_estado_activo">#4CAF50</color>   <!-- Rojo para stock vacío -->
+    <color name="color_card">#494949</color>
 </resources>

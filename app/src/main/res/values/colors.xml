@@ -22,11 +22,9 @@
     <color name="background_price_color">#EDE0E6</color>   <!-- Azul para precios -->
     <color name="discount_color">#4CAF50</color><!-- Verde para descuentos -->
     <color name="background_stock">#E8FAE8</color>    <!-- Verde para stock alto -->
-    <color name="stock_high">#4CAF50</color>    <!-- Verde para stock alto -->
-    <color name="stock_medium">#FFA000</color>  <!-- Ámbar para stock medio -->
-    <color name="stock_low">#F44336</color>     <!-- Rojo para stock bajo -->
     <color name="background_bar_actualizacion">#F6F6F6</color>   <!-- Rojo para stock vacío -->
     <color name="color_bar_actualizacion">#818181</color>   <!-- Rojo para stock vacío -->
     <color name="color_estado_anulado">#CE364D</color>   <!-- Rojo para stock vacío -->
     <color name="color_estado_activo">#4CAF50</color>   <!-- Rojo para stock vacío -->
+    <color name="color_card">#FFFFFF</color>   
 </resources>

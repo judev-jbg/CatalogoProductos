@@ -35,17 +35,18 @@ class ProductDetailActivity : AppCompatActivity() {
         binding.apply {
             tvId.text = producto.referencia
             tvDescripcion.text = producto.descripcion
-            tvCantidadBulto.text = producto.cantidad_bulto.toString()
-            tvUnidadVenta.text = producto.unidad_venta.toString()
+            tvCantidadBulto.text = producto.cantidad_bulto.toInt().toString()
+            tvUnidadVenta.text = producto.unidad_venta.toInt().toString()
             tvCategoria.text = producto.familia
-            tvStock.text = producto.stock_actual.toString()
+            tvStock.text = producto.stock_actual.toInt().toString()
             tvPrecio.text = priceFormat.format(producto.precio_actual)
             tvDescuento.text = producto.descuento
             tvUltimaActualizacion.text = dateFormat.format(Date(producto.ultima_actualizacion))
-            tvEstado.text = producto.estado
+            tvEstado.text = producto.estado.uppercase()
 
             // Título de la toolbar
             toolbar.title = "Detalle: ${producto.referencia}"
+
         }
     }
 }

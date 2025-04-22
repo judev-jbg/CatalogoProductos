@@ -16,8 +16,6 @@ class SyncWorker(
         val database = AppDatabase.getInstance(applicationContext)
         val syncRepository = SyncRepository(
             database.productoDao(),
-            database.historialPrecioDao(),
-            database.historialStockDao(),
             database.ultimaActualizacionDao()
         )
 

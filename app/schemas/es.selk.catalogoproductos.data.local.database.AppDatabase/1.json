@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "4e0e51463894b5fcd599e673b96a3228",
+    "identityHash": "ec19edade3cf625f518cdb43cf1a9f93",
     "entities": [
       {
         "tableName": "productos",
@@ -309,11 +309,11 @@
         "contentSyncTriggers": [
           "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_BEFORE_UPDATE BEFORE UPDATE ON `productos` BEGIN DELETE FROM `productos_fts` WHERE `docid`=OLD.`rowid`; END",
           "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_BEFORE_DELETE BEFORE DELETE ON `productos` BEGIN DELETE FROM `productos_fts` WHERE `docid`=OLD.`rowid`; END",
-          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_AFTER_UPDATE AFTER UPDATE ON `productos` BEGIN INSERT INTO `productos_fts`(`docid`, `referencia`, `descripcion`) VALUES (NEW.`rowid`, NEW.`referencia`, NEW.`descripcion`); END",
-          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_AFTER_INSERT AFTER INSERT ON `productos` BEGIN INSERT INTO `productos_fts`(`docid`, `referencia`, `descripcion`) VALUES (NEW.`rowid`, NEW.`referencia`, NEW.`descripcion`); END"
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_AFTER_UPDATE AFTER UPDATE ON `productos` BEGIN INSERT INTO `productos_fts`(`docid`, `referencia`, `descripcion`, `familia`) VALUES (NEW.`rowid`, NEW.`referencia`, NEW.`descripcion`, NEW.`familia`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_AFTER_INSERT AFTER INSERT ON `productos` BEGIN INSERT INTO `productos_fts`(`docid`, `referencia`, `descripcion`, `familia`) VALUES (NEW.`rowid`, NEW.`referencia`, NEW.`descripcion`, NEW.`familia`); END"
         ],
         "tableName": "productos_fts",
-        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`referencia` TEXT NOT NULL, `descripcion` TEXT NOT NULL, content=`productos`)",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`referencia` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `familia` TEXT NOT NULL, content=`productos`)",
         "fields": [
           {
             "fieldPath": "referencia",
@@ -324,6 +324,12 @@
           {
             "fieldPath": "descripcion",
             "columnName": "descripcion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "familia",
+            "columnName": "familia",
             "affinity": "TEXT",
             "notNull": true
           }
@@ -341,7 +347,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4e0e51463894b5fcd599e673b96a3228')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ec19edade3cf625f518cdb43cf1a9f93')"
     ]
   }
 }

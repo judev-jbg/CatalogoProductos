@@ -14,5 +14,5 @@
     <dimen name="card_margin">8dp</dimen>
 
     <!-- En tablets mostramos más columnas -->
-    <integer name="grid_column_count">2</integer>
+    <integer name="grid_column_count">1</integer>
 </resources>
