@@ -1,8 +1,10 @@
 package es.selk.catalogoproductos.ui.main
 
+import android.app.ActionBar
 import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.Rect
 import android.os.Bundle
@@ -10,6 +12,7 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
@@ -17,7 +20,6 @@ import android.widget.SearchView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
@@ -35,6 +37,7 @@ import es.selk.catalogoproductos.databinding.ActivityMainBinding
 import es.selk.catalogoproductos.ui.adapter.ProductoAdapter
 import es.selk.catalogoproductos.ui.detail.ProductDetailActivity
 import es.selk.catalogoproductos.ui.viewmodel.ProductoViewModel
+import es.selk.catalogoproductos.ui.viewmodel.StockFilter
 import es.selk.catalogoproductos.ui.viewmodel.SyncViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -42,6 +45,8 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private var searchView: SearchView? = null
+    private var searchViewExpanded = false
 
     private val db by lazy { AppDatabase.getInstance(applicationContext) }
 
@@ -73,7 +78,7 @@ class MainActivity : AppCompatActivity() {
             R.anim.slide_in_right,
             R.anim.slide_out_left
         )
-        startActivity(intent)
+        startActivity(intent, options.toBundle())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,6 +90,7 @@ class MainActivity : AppCompatActivity() {
 
         setupRecyclerView()
         setupListeners()
+        setupStockFilterChips()
 
         lifecycleScope.launch {
             MainApplication.isInitialSyncRunning.collect { isRunning ->
@@ -94,7 +100,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-
 
         observeViewModel()
 
@@ -107,6 +112,30 @@ class MainActivity : AppCompatActivity() {
 
         productoViewModel = ViewModelProvider(this, factory)[ProductoViewModel::class.java]
 
+    }
+
+    private fun setupStockFilterChips() {
+        // Configurar listeners para los chips
+        binding.chipAll.setOnClickListener {
+            productoViewModel.setStockFilter(StockFilter.ALL)
+        }
+
+        binding.chipInStock.setOnClickListener {
+            productoViewModel.setStockFilter(StockFilter.IN_STOCK)
+        }
+
+        binding.chipNoStock.setOnClickListener {
+            productoViewModel.setStockFilter(StockFilter.NO_STOCK)
+        }
+    }
+
+
+    private fun resetFiltersToDefault() {
+        Log.d("MainActivity", "Reseteando filtros a valores predeterminados")
+        binding.chipAll.isChecked = true
+        binding.chipInStock.isChecked = false
+        binding.chipNoStock.isChecked = false
+        productoViewModel.resetStockFilter()
     }
 
     private fun setupRecyclerView() {
@@ -222,6 +251,16 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                // Observar estado del filtro de stock y actualizar la UI
+                launch {
+                    productoViewModel.stockFilter.collectLatest { filter ->
+                        // Actualizar UI de los chips
+                        binding.chipAll.isChecked = filter == StockFilter.ALL
+                        binding.chipInStock.isChecked = filter == StockFilter.IN_STOCK
+                        binding.chipNoStock.isChecked = filter == StockFilter.NO_STOCK
+                    }
+                }
+
                 // Observar estado de sincronización
                 launch {
                     syncViewModel.isSyncing.collectLatest { isSyncing ->
@@ -247,7 +286,7 @@ class MainActivity : AppCompatActivity() {
                 // Observar fecha de última actualización
                 launch {
                     syncViewModel.fechaUltimaActualizacion.collectLatest { fecha ->
-                        binding.tvLastUpdate.text = "Última actualización: $fecha"
+                        binding.tvLastUpdate.text = "Última sincronización: $fecha"
                     }
                 }
 
@@ -272,80 +311,110 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onBackPressed() {
+        // Añadimos manejo específico para el botón atrás
+        if (searchView != null && searchViewExpanded) {
+            Log.d("MainActivity", "onBackPressed: SearchView está expandido, colapsando")
+            searchView?.setQuery("", false)
+            searchView?.isIconified = true
+            resetFiltersToDefault()
+        } else {
+            super.onBackPressed()
+        }
+    }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
 
         val searchItem = menu.findItem(R.id.action_search)
-        val searchView = searchItem.actionView as SearchView
+        searchView = searchItem.actionView as SearchView
 
-        searchView.queryHint = "Referencia, descripción o familia"
+        // Configurar para que use todo el ancho disponible cuando se expande
+        searchView?.maxWidth = Integer.MAX_VALUE
+
+        searchView?.queryHint = "Referencia, descripción o familia"
 
         // Configure search text appearance
-        val searchEditText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
+        val searchEditText = searchView?.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
         searchEditText?.apply {
-            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.on_primary))
-            setHintTextColor(ContextCompat.getColor(this@MainActivity, R.color.on_primary))
+            // Forzar color de texto blanco siempre
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.WHITE)
+
+            // Opcional: ajustar el tamaño del texto para mejor visibilidad
+            textSize = 24f
         }
 
-        // Search icon color
-        val searchIcon = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_button)
-        searchIcon?.setColorFilter(ContextCompat.getColor(this, R.color.on_primary), PorterDuff.Mode.SRC_IN)
+        // Cambiar color de todos los iconos a blanco
+        val searchIcon = searchView?.findViewById<ImageView>(androidx.appcompat.R.id.search_button)
+        searchIcon?.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
 
-        // Get close button reference
-        val closeIcon = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_close_btn)
-        closeIcon?.setColorFilter(ContextCompat.getColor(this, R.color.on_primary), PorterDuff.Mode.SRC_IN)
+        val closeIcon = searchView?.findViewById<ImageView>(androidx.appcompat.R.id.search_close_btn)
+        closeIcon?.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
 
-        // Track if search is empty to change close button behavior
-        var isSearchEmpty = true
+        // Botón para limpiar la consulta
+        closeIcon?.setOnClickListener {
+            Log.d("MainActivity", "Botón cerrar presionado")
+            searchView?.setQuery("", false)
 
-        // Custom OnCloseListener to handle search view closing
-        searchView.setOnCloseListener {
-            productoViewModel.setSearchQuery("")
-            false // Let the system handle the default closing behavior
+            // Si ya está vacío, colapsar y resetear filtros
+            if (searchView?.query.isNullOrEmpty()) {
+                Log.d("MainActivity", "Consulta vacía, colapsando y reseteando filtros")
+                searchView?.isIconified = true
+                resetFiltersToDefault()
+            }
         }
 
-        // Handle empty search when action view is collapsed
+        // Cambiar color de los iconos de submit y de voz (si existen)
+        val submitIcon = searchView?.findViewById<ImageView>(androidx.appcompat.R.id.search_go_btn)
+        submitIcon?.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
+
+        val voiceIcon = searchView?.findViewById<ImageView>(androidx.appcompat.R.id.search_voice_btn)
+        voiceIcon?.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
+
+        // Monitorear directamente cambios en el estado de expansión
+        searchView?.setOnSearchClickListener {
+            Log.d("MainActivity", "SearchView expandido")
+            searchViewExpanded = true
+
+        }
+
+        // Detector de colapso
+        searchView?.setOnCloseListener {
+            Log.d("MainActivity", "SearchView colapsado")
+            searchViewExpanded = false
+            resetFiltersToDefault()
+            false
+        }
+
         searchItem.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
             override fun onMenuItemActionExpand(item: MenuItem): Boolean {
-                searchView.requestFocus()
-                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.showSoftInput(searchView.findFocus(), InputMethodManager.SHOW_IMPLICIT)
+                Log.d("MainActivity", "onMenuItemActionExpand llamado")
+                searchViewExpanded = true
                 return true
             }
 
             override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
-                productoViewModel.setSearchQuery("") // Reset search to show all products
+                Log.d("MainActivity", "onMenuItemActionCollapse llamado")
+                searchViewExpanded = false
+                resetFiltersToDefault()
                 return true
             }
         })
 
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+        searchView?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 if (!query.isNullOrBlank()) {
                     productoViewModel.setSearchQuery(query)
-                    searchView.clearFocus()
+                    searchView?.clearFocus()
                 }
                 return true
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                // Update close button behavior based on text content
-                isSearchEmpty = newText.isNullOrBlank()
-
-                // Dynamically change the close button behavior
-                closeIcon?.setOnClickListener {
-                    if (isSearchEmpty) {
-                        // If empty, collapse the search view
-                        searchItem.collapseActionView()
-                    } else {
-                        // If not empty, just clear the text
-                        searchView.setQuery("", false)
-                    }
-                }
-
-                // Always update search query
+                // Actualizar la consulta en el ViewModel
                 productoViewModel.setSearchQuery(newText ?: "")
+
                 return true
             }
         })

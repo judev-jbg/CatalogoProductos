@@ -2,6 +2,7 @@ package es.selk.catalogoproductos.ui.adapter
 
 
 import android.graphics.Color
+import android.graphics.Typeface
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -75,32 +76,51 @@ class ProductoAdapter(
             binding.apply {
                 tvId.text = producto.referencia
                 tvDescripcion.text = producto.descripcion
-                tvCantidadBulto.text = "Cantidad bulto: ${producto.cantidad_bulto.toInt()}"
-                tvUnidadVenta.text = "Unidad venta: ${producto.unidad_venta}"
-                tvFamilia.text = producto.familia
-                tvPrecio.text = priceFormat.format(producto.precio_actual)
-                val stockText = "Stock: ${producto.stock_actual.toInt()}"
-                tvStock.text = stockText
-                tvStock.setTextColor(when {
-                    producto.stock_actual > 1.0 -> Color.parseColor("#4CAF50") // Verde
-                    else -> Color.parseColor("#CF6679")  // Rojo
-                })
-
-                if (producto.descuento == "") {
+                if(producto.estado == "Anulado") {
+                    tvCantidadBulto.visibility = android.view.View.GONE
+                    tvUnidadVenta.visibility = android.view.View.GONE
+                    tvStock.visibility = android.view.View.GONE
                     tvDescuento.visibility = android.view.View.GONE
+
                 } else {
+                    tvCantidadBulto.visibility = android.view.View.VISIBLE
+                    tvUnidadVenta.visibility = android.view.View.VISIBLE
+                    tvStock.visibility = android.view.View.VISIBLE
                     tvDescuento.visibility = android.view.View.VISIBLE
-                    tvDescuento.text = "Descuento: ${producto.descuento}"
+                    tvCantidadBulto.text = "Cantidad bulto: ${producto.cantidad_bulto.toInt()}"
+                    tvUnidadVenta.text = "Unidad venta: ${producto.unidad_venta}"
+                    val stockText = "Stock: ${producto.stock_actual.toInt()}"
+                    tvStock.text = stockText
+                    tvStock.setTextColor(when {
+                        producto.stock_actual > 1.0 -> Color.parseColor("#4CAF50") // Verde
+                        else -> Color.parseColor("#CF6679")  // Rojo
+                    })
+
+                    if (producto.descuento == "") {
+                        tvDescuento.visibility = android.view.View.GONE
+                    } else {
+                        tvDescuento.visibility = android.view.View.VISIBLE
+                        tvDescuento.text = "Descuento: ${producto.descuento}"
+                    }
                 }
 
+                tvFamilia.text = producto.familia
+                tvPrecio.text = priceFormat.format(producto.precio_actual)
+
                 tvEstado.text = producto.estado.uppercase()
-                tvEstado.setTextColor(when {
-                    producto.estado == "Activo" -> ContextCompat.getColor(binding.root.context, R.color.color_estado_activo)
-                    producto.estado == "Anulado" -> ContextCompat.getColor(binding.root.context, R.color.color_estado_anulado)
-                    else -> ContextCompat.getColor(binding.root.context, R.color.on_primary)
-                })
-
-
+                if (producto.estado == "Anulado") {
+                    // Si es "Anulado", establecer texto en negrita
+                    tvEstado.setTypeface(tvEstado.typeface, Typeface.BOLD)
+                    tvEstado.setTextColor(ContextCompat.getColor(binding.root.context, R.color.color_estado_anulado))
+                } else {
+                    // Si es "Activo" u otro estado, usar estilo normal
+                    tvEstado.setTypeface(tvEstado.typeface, Typeface.NORMAL)
+                    // Asignar color según el estado
+                    when (producto.estado) {
+                        "Activo" -> tvEstado.setTextColor(ContextCompat.getColor(binding.root.context, R.color.color_estado_activo))
+                        else -> tvEstado.setTextColor(ContextCompat.getColor(binding.root.context, R.color.on_primary))
+                    }
+                }
                 root.setOnClickListener { onItemClick(producto) }
             }
         }

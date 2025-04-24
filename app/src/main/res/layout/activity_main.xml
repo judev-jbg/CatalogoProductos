@@ -28,7 +28,7 @@
             style="@style/TextAppearance.App.UltimaActualizacion"
             android:padding="6dp"
             android:gravity="center"
-            tools:text="Última actualización: 15/03/2023 14:30" />
+            tools:text="Última sincronización: 15/03/2023 14:30" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -52,6 +52,47 @@
                 app:layout_constraintTop_toTopOf="parent"
                 tools:visibility="visible" />
 
+            <!-- Añadimos el ChipGroup para los filtros de stock -->
+            <HorizontalScrollView
+                android:id="@+id/filterScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                app:layout_constraintTop_toBottomOf="@id/progressBar">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/stockFilterChipGroup"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    app:singleSelection="true"
+                    app:selectionRequired="true">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipAll"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="Todos" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipInStock"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Con stock" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipNoStock"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sin stock" />
+
+                </com.google.android.material.chip.ChipGroup>
+            </HorizontalScrollView>
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerView"
                 android:layout_width="match_parent"
@@ -60,7 +101,7 @@
                 android:padding="4dp"
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/progressBar"
+                app:layout_constraintTop_toBottomOf="@id/filterScrollView"
                 tools:listitem="@layout/item_producto" />
 
             <TextView

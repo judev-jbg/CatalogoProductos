@@ -14,9 +14,6 @@ import es.selk.catalogoproductos.data.local.entity.HistorialPrecioEntity
 import es.selk.catalogoproductos.data.local.entity.HistorialStockEntity
 import es.selk.catalogoproductos.data.local.entity.ProductoEntity
 import es.selk.catalogoproductos.data.local.entity.UltimaActualizacionEntity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 @Database(
     entities = [
@@ -55,7 +52,7 @@ abstract class AppDatabase : RoomDatabase() {
 }
 
 @Entity(tableName = "productos_fts")
-@Fts4(contentEntity = ProductoEntity::class)
+@Fts4(contentEntity = ProductoEntity::class, tokenizer = "unicode61")
 data class ProductoFTS(
     @ColumnInfo(name = "rowid")
     @PrimaryKey
@@ -64,4 +61,3 @@ data class ProductoFTS(
     val descripcion: String,
     val familia: String
 )
-

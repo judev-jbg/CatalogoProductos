@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "ec19edade3cf625f518cdb43cf1a9f93",
+    "identityHash": "8d04eb0b6e80367530b95c5d1002f8f6",
     "entities": [
       {
         "tableName": "productos",
@@ -297,7 +297,7 @@
       {
         "ftsVersion": "FTS4",
         "ftsOptions": {
-          "tokenizer": "simple",
+          "tokenizer": "unicode61",
           "tokenizerArgs": [],
           "contentTable": "productos",
           "languageIdColumnName": "",
@@ -313,7 +313,7 @@
           "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_productos_fts_AFTER_INSERT AFTER INSERT ON `productos` BEGIN INSERT INTO `productos_fts`(`docid`, `referencia`, `descripcion`, `familia`) VALUES (NEW.`rowid`, NEW.`referencia`, NEW.`descripcion`, NEW.`familia`); END"
         ],
         "tableName": "productos_fts",
-        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`referencia` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `familia` TEXT NOT NULL, content=`productos`)",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`referencia` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `familia` TEXT NOT NULL, tokenize=unicode61, content=`productos`)",
         "fields": [
           {
             "fieldPath": "referencia",
@@ -347,7 +347,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ec19edade3cf625f518cdb43cf1a9f93')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8d04eb0b6e80367530b95c5d1002f8f6')"
     ]
   }
 }

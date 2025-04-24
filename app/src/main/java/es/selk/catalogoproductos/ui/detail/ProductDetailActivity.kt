@@ -1,7 +1,11 @@
 package es.selk.catalogoproductos.ui.detail
 
+import android.graphics.Typeface
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import es.selk.catalogoproductos.R
 import es.selk.catalogoproductos.data.local.entity.ProductoEntity
 import es.selk.catalogoproductos.databinding.ActivityProductDetailBinding
 import java.text.NumberFormat
@@ -35,12 +39,44 @@ class ProductDetailActivity : AppCompatActivity() {
         binding.apply {
             tvId.text = producto.referencia
             tvDescripcion.text = producto.descripcion
-            tvCantidadBulto.text = producto.cantidad_bulto.toInt().toString()
-            tvUnidadVenta.text = producto.unidad_venta.toInt().toString()
+
+            if(producto.estado == "Anulado"){
+                cardStock.visibility = View.GONE
+                tvCantidadBultoLabel.visibility = View.GONE
+                tvCantidadBulto.visibility = View.GONE
+                tvUnidadVentaLabel.visibility = View.GONE
+                tvUnidadVenta.visibility = View.GONE
+                tvStockLabel.visibility = View.GONE
+                tvStock.visibility = View.GONE
+                tvDescuentoLabel.visibility = View.GONE
+                tvDescuento.visibility = View.GONE
+                tvPrecioLabel.text = "Último precio:"
+                tvEstado.setTypeface(tvEstado.typeface, Typeface.BOLD)
+                tvEstado.setTextColor(ContextCompat.getColor(binding.root.context, R.color.color_estado_anulado))
+            }else{
+                cardStock.visibility = View.VISIBLE
+                tvCantidadBultoLabel.visibility = View.VISIBLE
+                tvCantidadBulto.visibility = View.VISIBLE
+                tvCantidadBulto.text = producto.cantidad_bulto.toInt().toString()
+                tvUnidadVentaLabel.visibility = View.VISIBLE
+                tvUnidadVenta.visibility = View.VISIBLE
+                tvUnidadVenta.text = producto.unidad_venta.toInt().toString()
+                tvStockLabel.visibility = View.VISIBLE
+                tvStock.visibility = View.VISIBLE
+                tvStock.text = producto.stock_actual.toInt().toString()
+                tvDescuentoLabel.visibility = View.VISIBLE
+                tvDescuento.visibility = View.VISIBLE
+                tvDescuento.text = producto.descuento
+                tvPrecioLabel.text = "Precio:"
+                tvEstado.setTypeface(tvEstado.typeface, Typeface.NORMAL)
+                when (producto.estado) {
+                    "Activo" -> tvEstado.setTextColor(ContextCompat.getColor(binding.root.context, R.color.color_estado_activo))
+                    else -> tvEstado.setTextColor(ContextCompat.getColor(binding.root.context, R.color.on_primary))
+                }
+            }
+
             tvCategoria.text = producto.familia
-            tvStock.text = producto.stock_actual.toInt().toString()
             tvPrecio.text = priceFormat.format(producto.precio_actual)
-            tvDescuento.text = producto.descuento
             tvUltimaActualizacion.text = dateFormat.format(Date(producto.ultima_actualizacion))
             tvEstado.text = producto.estado.uppercase()
 

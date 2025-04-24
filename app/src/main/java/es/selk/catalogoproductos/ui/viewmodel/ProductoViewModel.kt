@@ -16,6 +16,13 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
+// Enum para representar los filtros de stock
+enum class StockFilter {
+    ALL,       // Todos los productos
+    IN_STOCK,  // Productos con stock > 0
+    NO_STOCK   // Productos sin stock
+}
+
 class ProductoViewModel(
     private val productoRepository: ProductoRepository
 ) : ViewModel() {
@@ -23,7 +30,14 @@ class ProductoViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    // Estado de resultados
+    // Estado de filtro de stock
+    private val _stockFilter = MutableStateFlow(StockFilter.ALL)
+    val stockFilter: StateFlow<StockFilter> = _stockFilter
+
+    // Estado de resultados no filtrados (después de la búsqueda pero antes del filtro de stock)
+    private val _unfilteredResults = MutableStateFlow<List<ProductoEntity>>(emptyList())
+
+    // Estado de resultados filtrados (después de aplicar filtro de stock)
     private val _searchResults = MutableStateFlow<List<ProductoEntity>>(emptyList())
     val searchResults: StateFlow<List<ProductoEntity>> = _searchResults
 
@@ -49,9 +63,42 @@ class ProductoViewModel(
         // Para búsquedas inmediatas - esto ayuda a evitar retrasos
         if (query.isBlank()) {
             viewModelScope.launch {
-                _searchResults.value = _allProducts.value
+                _unfilteredResults.value = _allProducts.value
+                applyStockFilter()
             }
         }
+    }
+
+    // Función para establecer el filtro de stock
+    fun setStockFilter(filter: StockFilter) {
+        if (_stockFilter.value != filter) {
+            _stockFilter.value = filter
+            applyStockFilter()
+        }
+    }
+
+    // Función para resetear el filtro a 'Todos'
+    fun resetStockFilter() {
+        Log.d("ProductoViewModel", "Reseteando filtro de stock a TODOS")
+        _stockFilter.value = StockFilter.ALL
+        viewModelScope.launch {
+            applyStockFilter()
+            Log.d("ProductoViewModel", "Filtro reseteado y aplicado. Mostrando ${_searchResults.value.size} productos")
+        }
+    }
+
+    // Aplicar el filtro de stock a los resultados no filtrados
+    private fun applyStockFilter() {
+        val currentFilter = _stockFilter.value
+        val resultsBeforeFilter = _unfilteredResults.value
+        Log.d("ProductoViewModel", "Aplicando filtro: $currentFilter sobre ${resultsBeforeFilter.size} productos")
+        val filteredList = when (currentFilter) {
+            StockFilter.ALL -> resultsBeforeFilter
+            StockFilter.IN_STOCK -> resultsBeforeFilter .filter { it.stock_actual > 0 }
+            StockFilter.NO_STOCK -> resultsBeforeFilter .filter { it.stock_actual <= 0 }
+        }
+        Log.d("ProductoViewModel", "Resultados después del filtro: ${filteredList.size} productos")
+        _searchResults.value = filteredList
     }
 
     fun refreshProducts() {
@@ -70,7 +117,8 @@ class ProductoViewModel(
                     .collect { productos ->
                         Log.d("ProductoViewModel", "Productos refrescados: ${productos.size}")
                         _allProducts.value = productos
-                        _searchResults.value = productos
+                        _unfilteredResults.value = productos
+                        applyStockFilter()
                         _isLoading.value = false
                     }
             } catch (e: Exception) {
@@ -113,7 +161,8 @@ class ProductoViewModel(
                     }
                 }
                 .collect { results ->
-                    _searchResults.value = results
+                    _unfilteredResults.value = results
+                    applyStockFilter()
                     _isLoading.value = false
                 }
         }
@@ -129,7 +178,8 @@ class ProductoViewModel(
 
                     // Si no hay búsqueda activa, muestra todos los productos
                     if (_searchQuery.value.isBlank()) {
-                        _searchResults.value = productos
+                        _unfilteredResults.value = productos
+                        applyStockFilter()
                     }
                     _isLoading.value = false
                 }
@@ -137,19 +187,19 @@ class ProductoViewModel(
 
 
 
-    // Factory para crear el ViewModel con dependencias
-    class Factory(
-        private val productoRepository: ProductoRepository
-    ) : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(ProductoViewModel::class.java)) {
-                return ProductoViewModel(productoRepository) as T
+        // Factory para crear el ViewModel con dependencias
+        class Factory(
+            private val productoRepository: ProductoRepository
+        ) : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(ProductoViewModel::class.java)) {
+                    return ProductoViewModel(productoRepository) as T
+                }
+                throw IllegalArgumentException("Unknown ViewModel class")
             }
-            throw IllegalArgumentException("Unknown ViewModel class")
-        }
 
-    }
+        }
 
     }
 }
