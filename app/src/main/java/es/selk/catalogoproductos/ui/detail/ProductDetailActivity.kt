@@ -16,7 +16,7 @@ import java.util.Locale
 class ProductDetailActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProductDetailBinding
-    private val priceFormat = NumberFormat.getCurrencyInstance(Locale("es", "ES"))
+    private val priceFormat = NumberFormat.getCurrencyInstance(Locale("es", "ES")).apply { maximumFractionDigits = 4}
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES"))
 
     override fun onCreate(savedInstanceState: Bundle?) {

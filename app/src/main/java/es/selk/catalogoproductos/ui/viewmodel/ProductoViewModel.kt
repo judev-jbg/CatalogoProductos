@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -138,26 +139,27 @@ class ProductoViewModel(
                 .distinctUntilChanged() // Solo procesar si cambia la consulta
                 .flatMapLatest { query ->
                     _isLoading.value = true
-                    if (query.isBlank()) {
-                        productoRepository.getAllProductos()
-                            .catch {
-                                _error.value = it.message
-                                emit(emptyList())
-                            }
-                    }else if (query.length >= 6) {
-                        // Search with at least 6 characters
-                        productoRepository.searchProductos(query)
-                            .catch {
-                                _error.value = it.message
-                                emit(emptyList())
-                            }
-                    } else {
-                        // For very short queries, show all products
-                        productoRepository.getAllProductos()
-                            .catch {
-                                _error.value = it.message
-                                emit(emptyList())
-                            }
+                    when {
+                        query.isBlank() -> {
+                            productoRepository.getAllProductos()
+                                .catch {
+                                    _error.value = it.message
+                                    emit(emptyList())
+                                }
+                        }
+                        query.length >= 6 -> {
+                            // Solo ejecuta búsqueda con 6+ caracteres
+                            productoRepository.searchProductos(query)
+                                .catch {
+                                    _error.value = it.message
+                                    emit(emptyList())
+                                }
+                        }
+                        else -> {
+                            // Para consultas cortas, no emitir nuevos valores
+                            // (mantiene los resultados actuales)
+                            flow { emit(_unfilteredResults.value ?: emptyList()) }
+                        }
                     }
                 }
                 .collect { results ->

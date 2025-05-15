@@ -17,10 +17,23 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@color/primary"
+            app:subtitle="v1.1.0"
+            app:subtitleTextColor="@android:color/secondary_text_dark"
+            app:subtitleTextAppearance="@style/TextAppearance.AppCompat.Small"
             app:title="SELK"
             app:titleTextAppearance="@style/TextAppearance.AppCompat.Large"
             app:titleTextColor="@android:color/white" />
-
+        <TextView
+            android:id="@+id/tvSearchHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ingrese al menos 6 caracteres para iniciar la búsqueda"
+            android:textColor="@android:color/white"
+            android:background="@color/primary_variant"
+            android:padding="8dp"
+            android:gravity="center"
+            android:visibility="gone"
+            android:textSize="14sp" />
         <TextView
             android:id="@+id/tvLastUpdate"
             android:layout_width="match_parent"

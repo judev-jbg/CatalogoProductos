@@ -70,7 +70,7 @@ class ProductoAdapter(
         private val onItemClick: (ProductoEntity) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        private val priceFormat = NumberFormat.getCurrencyInstance(Locale("es", "ES"))
+        private val priceFormat = NumberFormat.getCurrencyInstance(Locale("es", "ES")).apply { maximumFractionDigits = 4}
 
         fun bind(producto: ProductoEntity) {
             binding.apply {

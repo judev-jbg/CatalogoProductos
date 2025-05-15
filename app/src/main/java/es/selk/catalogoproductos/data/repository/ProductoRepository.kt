@@ -1,5 +1,6 @@
 package es.selk.catalogoproductos.data.repository
 
+import android.util.Log
 import es.selk.catalogoproductos.data.local.dao.ProductoDao
 import es.selk.catalogoproductos.data.local.entity.ProductoEntity
 import kotlinx.coroutines.flow.Flow
@@ -10,29 +11,25 @@ class ProductoRepository(
 ) {
     // Búsqueda de productos
     fun searchProductos(query: String): Flow<List<ProductoEntity>> {
-        // Normalizar la consulta removiendo acentos
-        val normalizedQuery = normalizeString(query.trim().replace("\\s+".toRegex(), " "))
+        val trimmedQuery = query.replaceFirst("^\\s+".toRegex(), "")
+        val isReferenciaSearch = trimmedQuery.contains("  ")
+        Log.d("ProductoRepository", "Búsqueda: '$trimmedQuery',es búsqueda por referencia: $isReferenciaSearch")
 
         // Si la consulta parece un ID de producto (contiene doble espacio)
-        return if (query.contains("  ")) {
-            productoDao.searchProductos(normalizedQuery)
+        return if (isReferenciaSearch) {
+            productoDao.searchProductosByReferencia(trimmedQuery)
         } else {
             // Usar FTS para búsqueda por descripción
             try {
                 // Escape special FTS characters to prevent syntax errors
-                val safeQuery = normalizedQuery.replace("[\"*]".toRegex(), " ")
+                Log.d("ProductoRepository", "Ejecutando búsqueda por FTS")
+                val safeQuery = trimmedQuery.replace("[\"*]".toRegex(), " ")
                 productoDao.searchProductosFTS(safeQuery + "*")  // Add wildcard for partial matches
             } catch (e: Exception) {
                 // Fallback to regular search if FTS fails
-                productoDao.searchProductos(normalizedQuery)
+                productoDao.searchProductosByDescripcionOrFamilia(trimmedQuery)
             }
         }
-    }
-
-    // Función para normalizar cadenas eliminando acentos
-    private fun normalizeString(input: String): String {
-        val normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
-        return normalized.replace("[^\\p{ASCII}]".toRegex(), "")
     }
 
     suspend fun getProductCount(): Int {

@@ -317,6 +317,8 @@ class MainActivity : AppCompatActivity() {
             Log.d("MainActivity", "onBackPressed: SearchView está expandido, colapsando")
             searchView?.setQuery("", false)
             searchView?.isIconified = true
+            // Ocultar el mensaje de ayuda para búsqueda
+            binding.tvSearchHint.visibility = View.GONE
             resetFiltersToDefault()
         } else {
             super.onBackPressed()
@@ -376,6 +378,8 @@ class MainActivity : AppCompatActivity() {
         searchView?.setOnSearchClickListener {
             Log.d("MainActivity", "SearchView expandido")
             searchViewExpanded = true
+            // Mostrar el mensaje de ayuda para búsqueda
+            binding.tvSearchHint.visibility = View.VISIBLE
 
         }
 
@@ -383,6 +387,8 @@ class MainActivity : AppCompatActivity() {
         searchView?.setOnCloseListener {
             Log.d("MainActivity", "SearchView colapsado")
             searchViewExpanded = false
+            // Ocultar el mensaje de ayuda para búsqueda
+            binding.tvSearchHint.visibility = View.GONE
             resetFiltersToDefault()
             false
         }
@@ -391,12 +397,16 @@ class MainActivity : AppCompatActivity() {
             override fun onMenuItemActionExpand(item: MenuItem): Boolean {
                 Log.d("MainActivity", "onMenuItemActionExpand llamado")
                 searchViewExpanded = true
+                // Mostrar el mensaje de ayuda para búsqueda
+                binding.tvSearchHint.visibility = View.VISIBLE
                 return true
             }
 
             override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
                 Log.d("MainActivity", "onMenuItemActionCollapse llamado")
                 searchViewExpanded = false
+                // Ocultar el mensaje de ayuda para búsqueda
+                binding.tvSearchHint.visibility = View.GONE
                 resetFiltersToDefault()
                 return true
             }
@@ -407,6 +417,8 @@ class MainActivity : AppCompatActivity() {
                 if (!query.isNullOrBlank()) {
                     productoViewModel.setSearchQuery(query)
                     searchView?.clearFocus()
+                    // Manejar visibilidad del mensaje basado en la longitud
+                    updateSearchHintVisibility(query)
                 }
                 return true
             }
@@ -414,13 +426,27 @@ class MainActivity : AppCompatActivity() {
             override fun onQueryTextChange(newText: String?): Boolean {
                 // Actualizar la consulta en el ViewModel
                 productoViewModel.setSearchQuery(newText ?: "")
-
+                // Manejar visibilidad del mensaje basado en la longitud
+                updateSearchHintVisibility(newText)
                 return true
             }
         })
 
         return true
     }
+
+    private fun updateSearchHintVisibility(text: String?) {
+        if (searchViewExpanded) {
+            if (text.isNullOrEmpty() || text.length < 6) {
+                binding.tvSearchHint.visibility = View.VISIBLE
+            } else {
+                binding.tvSearchHint.visibility = View.GONE
+            }
+        } else {
+            binding.tvSearchHint.visibility = View.GONE
+        }
+    }
+
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
