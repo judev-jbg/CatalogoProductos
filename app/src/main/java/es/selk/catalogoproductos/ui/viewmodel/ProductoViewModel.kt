@@ -147,8 +147,8 @@ class ProductoViewModel(
                                     emit(emptyList())
                                 }
                         }
-                        query.length >= 6 -> {
-                            // Solo ejecuta búsqueda con 6+ caracteres
+                        query.length >= 2 -> {
+                            // Solo ejecuta búsqueda con 2+ caracteres
                             productoRepository.searchProductos(query)
                                 .catch {
                                     _error.value = it.message

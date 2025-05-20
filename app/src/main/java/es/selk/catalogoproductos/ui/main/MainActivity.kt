@@ -437,7 +437,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSearchHintVisibility(text: String?) {
         if (searchViewExpanded) {
-            if (text.isNullOrEmpty() || text.length < 6) {
+            if (text.isNullOrEmpty() || text.length < 2) {
                 binding.tvSearchHint.visibility = View.VISIBLE
             } else {
                 binding.tvSearchHint.visibility = View.GONE
