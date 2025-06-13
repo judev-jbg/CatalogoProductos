@@ -16,6 +16,10 @@ import es.selk.catalogoproductos.data.local.entity.ProductoEntity
 import es.selk.catalogoproductos.databinding.ItemProductoBinding
 import java.text.NumberFormat
 import java.util.Locale
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 
 class ProductoAdapter(
     private val onItemClick: (ProductoEntity) -> Unit
@@ -122,6 +126,22 @@ class ProductoAdapter(
                     }
                 }
                 tvLocalizacion.text = "Localizacion: ${producto.localizacion}"
+
+                tvId.setOnClickListener { view ->
+                    val context = view.context
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("Referencia del producto", producto.referencia)
+                    clipboard.setPrimaryClip(clip)
+
+                    // Mostrar mensaje de confirmación
+                    Toast.makeText(context, "Referencia '${producto.referencia}' copiada", Toast.LENGTH_SHORT).show()
+
+                    // Importante: NO llamar a onItemClick aquí para evitar navegación
+                    Log.d("ProductoAdapter", "Referencia copiada: ${producto.referencia}")
+
+                    // Evitar que el evento se propague al contenedor padre
+                    // (esto evita que se ejecute el click del root)
+                }
                 root.setOnClickListener { onItemClick(producto) }
             }
         }
