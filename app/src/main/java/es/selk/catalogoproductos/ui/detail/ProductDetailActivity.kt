@@ -73,12 +73,14 @@ class ProductDetailActivity : AppCompatActivity() {
                     "Activo" -> tvEstado.setTextColor(ContextCompat.getColor(binding.root.context, R.color.color_estado_activo))
                     else -> tvEstado.setTextColor(ContextCompat.getColor(binding.root.context, R.color.on_primary))
                 }
+
             }
 
             tvCategoria.text = producto.familia
             tvPrecio.text = priceFormat.format(producto.precio_actual)
             tvUltimaActualizacion.text = dateFormat.format(Date(producto.ultima_actualizacion))
             tvEstado.text = producto.estado.uppercase()
+            tvLocalizacion.text = producto.localizacion
 
             // Título de la toolbar
             toolbar.title = "Detalle: ${producto.referencia}"

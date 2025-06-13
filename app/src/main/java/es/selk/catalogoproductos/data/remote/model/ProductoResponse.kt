@@ -4,7 +4,7 @@ import android.util.Log
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 import com.squareup.moshi.*
-import okio.Buffer
+
 
 @JsonClass(generateAdapter = true)
 data class ProductoResponse(
@@ -19,7 +19,8 @@ data class ProductoResponse(
     @Json(name = "descuento") val descuento: String = "",
     @Json(name = "ultima_actualizacion") val ultimaActualizacion: Long = 0L,
     @Json(name = "campo_adicional") val campoAdicional: String? = null,
-    @Json(name = "estado") val estado: String = "0"
+    @Json(name = "estado") val estado: String = "0",
+    @Json(name = "localizacion") val localizacion: String = "SU"
 )
 
 class ProductoResponseAdapter {
@@ -40,6 +41,7 @@ class ProductoResponseAdapter {
             val descuento = jsonObject["descuento"]?.toString() ?: ""
             val campoAdicional = jsonObject["campo_adicional"]?.toString()
             val estado = jsonObject["estado"]?.toString() ?: "0"
+            val localizacion = jsonObject["localizacion"]?.toString() ?: "SU"
 
             // Obtener timestamp con manejo seguro
             val ultimaActualizacion = when (val timestamp = jsonObject["ultima_actualizacion"]) {
@@ -60,7 +62,8 @@ class ProductoResponseAdapter {
                 descuento = descuento,
                 ultimaActualizacion = ultimaActualizacion,
                 campoAdicional = campoAdicional,
-                estado = estado
+                estado = estado,
+                localizacion = localizacion
             )
         } catch (e: Exception) {
             // Loguear el error y retornar un objeto vacío

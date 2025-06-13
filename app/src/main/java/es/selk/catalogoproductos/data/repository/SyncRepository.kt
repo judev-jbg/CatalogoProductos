@@ -146,7 +146,9 @@ class SyncRepository(
                                 descuento = productoResponse.descuento.ifBlank { "" },
                                 ultima_actualizacion = productoResponse.ultimaActualizacion.takeIf { it > 0 }
                                     ?: System.currentTimeMillis(),
-                                estado = if ((productoResponse.estado).toIntOrNull() == 0) "Activo" else "Anulado"
+                                estado = if ((productoResponse.estado).toIntOrNull() == 0) "Activo" else "Anulado",
+                                localizacion = productoResponse.localizacion.ifBlank { "SU" }
+
                             )
                             productosBatch.add(entity)
 
@@ -232,7 +234,8 @@ class SyncRepository(
             precio_actual = this.precioActual,
             descuento = this.descuento,
             ultima_actualizacion = this.ultimaActualizacion,
-            estado = this.estado
+            estado = this.estado,
+            localizacion = this.localizacion.ifBlank { "SU" }
         )
     }
 

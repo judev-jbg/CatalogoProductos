@@ -28,4 +28,5 @@ data class ProductoEntity(
     val descuento: String,
     val ultima_actualizacion: Long,
     val estado: String,
+    val localizacion: String
 ) : Parcelable

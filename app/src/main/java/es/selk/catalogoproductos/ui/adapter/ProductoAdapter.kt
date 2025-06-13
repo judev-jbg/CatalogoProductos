@@ -88,7 +88,7 @@ class ProductoAdapter(
                     tvStock.visibility = android.view.View.VISIBLE
                     tvDescuento.visibility = android.view.View.VISIBLE
                     tvCantidadBulto.text = "Cantidad bulto: ${producto.cantidad_bulto.toInt()}"
-                    tvUnidadVenta.text = "Unidad venta: ${producto.unidad_venta}"
+                    tvUnidadVenta.text = "Unidad venta: ${producto.unidad_venta.toInt()}"
                     val stockText = "Stock: ${producto.stock_actual.toInt()}"
                     tvStock.text = stockText
                     tvStock.setTextColor(when {
@@ -121,6 +121,7 @@ class ProductoAdapter(
                         else -> tvEstado.setTextColor(ContextCompat.getColor(binding.root.context, R.color.on_primary))
                     }
                 }
+                tvLocalizacion.text = "Localizacion: ${producto.localizacion}"
                 root.setOnClickListener { onItemClick(producto) }
             }
         }

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "8d04eb0b6e80367530b95c5d1002f8f6",
+    "identityHash": "4350b5b1c8cab95f85c543e3650bfc9d",
     "entities": [
       {
         "tableName": "productos",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_producto` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `referencia` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `cantidad_bulto` REAL NOT NULL, `unidad_venta` REAL NOT NULL, `familia` TEXT NOT NULL, `stock_actual` REAL NOT NULL, `precio_actual` REAL NOT NULL, `descuento` TEXT NOT NULL, `ultima_actualizacion` INTEGER NOT NULL, `estado` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_producto` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `referencia` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `cantidad_bulto` REAL NOT NULL, `unidad_venta` REAL NOT NULL, `familia` TEXT NOT NULL, `stock_actual` REAL NOT NULL, `precio_actual` REAL NOT NULL, `descuento` TEXT NOT NULL, `ultima_actualizacion` INTEGER NOT NULL, `estado` TEXT NOT NULL, `localizacion` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id_producto",
@@ -71,6 +71,12 @@
           {
             "fieldPath": "estado",
             "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localizacion",
+            "columnName": "localizacion",
             "affinity": "TEXT",
             "notNull": true
           }
@@ -347,7 +353,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8d04eb0b6e80367530b95c5d1002f8f6')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4350b5b1c8cab95f85c543e3650bfc9d')"
     ]
   }
 }
