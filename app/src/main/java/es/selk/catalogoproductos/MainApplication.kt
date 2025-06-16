@@ -2,6 +2,7 @@ package es.selk.catalogoproductos
 
 import android.app.Application
 import android.content.Context
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.WorkManager
@@ -10,6 +11,7 @@ import java.util.concurrent.TimeUnit
 import androidx.work.*
 import java.util.*
 import androidx.core.content.edit
+import es.selk.catalogoproductos.utils.NetworkUtil
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainApplication : Application() {
@@ -17,23 +19,38 @@ class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Verificar conexión antes de programar sincronización
+        if (!NetworkUtil.isNetworkAvailable(this)) {
+            Log.d("MainApplication", "No hay conexión a internet. No se programará sincronización inicial.")
+            return
+        }
+
         // Check if this is the first run
         val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
         val isFirstRun = prefs.getBoolean("is_first_run", true)
 
         if (isFirstRun) {
+            Log.d("MainApplication", "Primera ejecución detectada. Programando sincronización inicial.")
             // First run - schedule immediate sync
             setupImmediateSync()
 
             // Save that it's no longer first run
             prefs.edit() { putBoolean("is_first_run", false) }
         } else {
+            Log.d("MainApplication", "Ejecución normal. Programando sincronización diaria.")
             // Normal run - schedule daily sync only
             setupDailySync()
         }
     }
 
     private fun setupImmediateSync() {
+        // Verificar conectividad antes de programar
+        if (!NetworkUtil.isNetworkAvailable(this)) {
+            Log.d("MainApplication", "No hay conexión. Cancelando sincronización inmediata.")
+            isInitialSyncRunning.value = false
+            return
+        }
+
         isInitialSyncRunning.value = true
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -50,6 +67,8 @@ class MainApplication : Application() {
             ExistingWorkPolicy.REPLACE,
             syncRequest
         )
+
+        Log.d("MainApplication", "Sincronización inmediata programada.")
 
         // Also setup daily sync
         setupDailySync()
@@ -92,6 +111,8 @@ class MainApplication : Application() {
             ExistingPeriodicWorkPolicy.REPLACE,
             dailySyncRequest
         )
+
+        Log.d("MainApplication", "Sincronización diaria programada para las 5:00 AM.")
     }
 
     companion object {

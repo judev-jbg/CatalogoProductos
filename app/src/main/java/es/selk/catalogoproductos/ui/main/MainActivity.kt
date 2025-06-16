@@ -39,14 +39,15 @@ import es.selk.catalogoproductos.ui.detail.ProductDetailActivity
 import es.selk.catalogoproductos.ui.viewmodel.ProductoViewModel
 import es.selk.catalogoproductos.ui.viewmodel.StockFilter
 import es.selk.catalogoproductos.ui.viewmodel.SyncViewModel
+import es.selk.catalogoproductos.utils.NetworkUtil
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var searchView: SearchView? = null
     private var searchViewExpanded = false
+    private var isNetworkAvailable = true
 
     private val db by lazy { AppDatabase.getInstance(applicationContext) }
 
@@ -91,6 +92,7 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         setupListeners()
         setupStockFilterChips()
+        setupNetworkObserver()
 
         lifecycleScope.launch {
             MainApplication.isInitialSyncRunning.collect { isRunning ->
@@ -111,7 +113,111 @@ class MainActivity : AppCompatActivity() {
         }
 
         productoViewModel = ViewModelProvider(this, factory)[ProductoViewModel::class.java]
+    }
 
+    private fun setupNetworkObserver() {
+        // Observar cambios en la conectividad de red
+        NetworkUtil.NetworkLiveData(this).observe(this) { isConnected ->
+            isNetworkAvailable = isConnected
+            updateNetworkStatus(isConnected)
+        }
+    }
+
+    private fun updateNetworkStatus(isConnected: Boolean) {
+        Log.d("MainActivity", "Estado de red: ${if (isConnected) "Conectado" else "Desconectado"}")
+
+        if (!isConnected) {
+            // Si no hay conexión, determinar el mensaje apropiado
+            lifecycleScope.launch {
+                val offlineMessage = determineOfflineMessage()
+                binding.tvOfflineStatus.text = offlineMessage
+                binding.tvOfflineStatus.isVisible = true
+                Log.d("MainActivity", "Mensaje offline establecido: $offlineMessage")
+            }
+        } else {
+            // Si hay conexión, ocultar el mensaje
+            binding.tvOfflineStatus.isVisible = false
+
+            // Verificar si necesitamos ejecutar sincronización inicial automática
+            checkAndRunInitialSync()
+        }
+
+        // Habilitar/deshabilitar botón de sincronización
+        binding.fabSync.isEnabled = isConnected
+
+        // Cambiar apariencia del botón cuando está deshabilitado
+        if (isConnected) {
+            binding.fabSync.alpha = 1.0f
+        } else {
+            binding.fabSync.alpha = 0.5f
+        }
+    }
+
+    /**
+     * Verifica si necesitamos ejecutar sincronización inicial automática
+     * cuando se detecta conexión por primera vez
+     */
+    private fun checkAndRunInitialSync() {
+        lifecycleScope.launch {
+            val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+            val isFirstRun = prefs.getBoolean("is_first_run", true)
+
+            // Verificar si hay productos en la base de datos
+            val productCount = try {
+                productoViewModel.getProductCount()
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error al obtener conteo de productos", e)
+                0
+            }
+
+            // Si es primera ejecución O no hay productos, ejecutar sincronización inicial
+            if (isFirstRun || productCount == 0) {
+                Log.d("MainActivity", "Detectada conexión en primera instalación. Iniciando sincronización automática.")
+
+                // Marcar que ya no es primera ejecución
+                prefs.edit().putBoolean("is_first_run", false).apply()
+
+                // Mostrar mensaje de que se está sincronizando
+                Toast.makeText(this@MainActivity, "Conexión detectada. Iniciando configuración inicial...", Toast.LENGTH_LONG).show()
+
+                // Ejecutar sincronización inicial específica
+                syncViewModel.syncInitialData()
+            }
+        }
+    }
+
+    private suspend fun determineOfflineMessage(): String {
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val isFirstRun = prefs.getBoolean("is_first_run", true)
+
+        // Verificar si hay productos en la base de datos
+        val productCount = try {
+            productoViewModel.getProductCount()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error al obtener conteo de productos", e)
+            0
+        }
+
+        return if (isFirstRun || productCount == 0) {
+            // Primera instalación o base de datos vacía
+            "Sin conexión: Se requiere conexión a internet para la configuración inicial."
+        } else {
+            // Uso normal con productos existentes
+            "Modo offline: Puedes usar la aplicación pero no será posible sincronizar productos."
+        }
+    }
+
+    /**
+     * Método auxiliar para refrescar el mensaje offline cuando es necesario
+     */
+    private fun refreshOfflineMessage() {
+        if (!isNetworkAvailable) {
+            lifecycleScope.launch {
+                val offlineMessage = determineOfflineMessage()
+                binding.tvOfflineStatus.text = offlineMessage
+                Log.d("MainActivity", "Mensaje offline actualizado: $offlineMessage")
+            }
+        }
     }
 
     private fun setupStockFilterChips() {
@@ -128,7 +234,6 @@ class MainActivity : AppCompatActivity() {
             productoViewModel.setStockFilter(StockFilter.NO_STOCK)
         }
     }
-
 
     private fun resetFiltersToDefault() {
         Log.d("MainActivity", "Reseteando filtros a valores predeterminados")
@@ -181,7 +286,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     class GridSpacingItemDecoration(
         private val spanCount: Int,
         private val spacing: Int,
@@ -224,7 +328,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.fabSync.setOnClickListener {
-            syncViewModel.syncData()
+            // Solo permitir sincronización si hay conexión
+            if (isNetworkAvailable) {
+                syncViewModel.syncData()
+            } else {
+                Toast.makeText(this, "No hay conexión a internet. No es posible sincronizar.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -240,6 +349,8 @@ class MainActivity : AppCompatActivity() {
                         binding.recyclerView.isVisible = productos.isNotEmpty()
                         if (productos.isNotEmpty()) {
                             binding.recyclerView.scrollToPosition(0)
+                            // Refrescar mensaje offline si hay productos por primera vez
+                            refreshOfflineMessage()
                         }
                     }
                 }
@@ -267,7 +378,9 @@ class MainActivity : AppCompatActivity() {
                         Log.d("MainActivity", "UI: Estado de sincronización: $isSyncing")
                         // Show overlay during sync
                         binding.syncOverlay.isVisible = isSyncing
-                        binding.fabSync.isEnabled = !isSyncing
+
+                        // Solo habilitar fabSync si hay conexión Y no se está sincronizando
+                        binding.fabSync.isEnabled = isNetworkAvailable && !isSyncing
 
                         // If sync just completed, refresh the product list
                         if (isSyncing) {
@@ -278,6 +391,9 @@ class MainActivity : AppCompatActivity() {
                                 syncViewModel.justCompletedSync = false
                                 Log.d("MainActivity", "UI: Sincronización completa, refrescando productos")
                                 productoViewModel.refreshProducts()
+
+                                // Actualizar mensaje offline si es necesario (después de primera sincronización)
+                                refreshOfflineMessage()
                             }
                         }
                     }
@@ -286,7 +402,7 @@ class MainActivity : AppCompatActivity() {
                 // Observar fecha de última actualización
                 launch {
                     syncViewModel.fechaUltimaActualizacion.collectLatest { fecha ->
-                        binding.tvLastUpdate.text = "Última sincronización: $fecha"
+                        binding.tvLastUpdate.text = "Última actualización: $fecha"
                     }
                 }
 
@@ -311,14 +427,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Método para controlar la visibilidad del mensaje de ayuda para búsqueda
+    private fun updateSearchHintVisibility(text: String?) {
+        if (searchViewExpanded) {
+            if (text.isNullOrEmpty() || text.length < 3) {
+                binding.tvSearchHint.visibility = View.VISIBLE
+            } else {
+                binding.tvSearchHint.visibility = View.GONE
+            }
+        } else {
+            binding.tvSearchHint.visibility = View.GONE
+        }
+    }
+
     override fun onBackPressed() {
         // Añadimos manejo específico para el botón atrás
         if (searchView != null && searchViewExpanded) {
             Log.d("MainActivity", "onBackPressed: SearchView está expandido, colapsando")
             searchView?.setQuery("", false)
             searchView?.isIconified = true
+
             // Ocultar el mensaje de ayuda para búsqueda
             binding.tvSearchHint.visibility = View.GONE
+
             resetFiltersToDefault()
         } else {
             super.onBackPressed()
@@ -378,17 +509,19 @@ class MainActivity : AppCompatActivity() {
         searchView?.setOnSearchClickListener {
             Log.d("MainActivity", "SearchView expandido")
             searchViewExpanded = true
+
             // Mostrar el mensaje de ayuda para búsqueda
             binding.tvSearchHint.visibility = View.VISIBLE
-
         }
 
         // Detector de colapso
         searchView?.setOnCloseListener {
             Log.d("MainActivity", "SearchView colapsado")
             searchViewExpanded = false
+
             // Ocultar el mensaje de ayuda para búsqueda
             binding.tvSearchHint.visibility = View.GONE
+
             resetFiltersToDefault()
             false
         }
@@ -397,16 +530,20 @@ class MainActivity : AppCompatActivity() {
             override fun onMenuItemActionExpand(item: MenuItem): Boolean {
                 Log.d("MainActivity", "onMenuItemActionExpand llamado")
                 searchViewExpanded = true
+
                 // Mostrar el mensaje de ayuda para búsqueda
                 binding.tvSearchHint.visibility = View.VISIBLE
+
                 return true
             }
 
             override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
                 Log.d("MainActivity", "onMenuItemActionCollapse llamado")
                 searchViewExpanded = false
+
                 // Ocultar el mensaje de ayuda para búsqueda
                 binding.tvSearchHint.visibility = View.GONE
+
                 resetFiltersToDefault()
                 return true
             }
@@ -417,6 +554,7 @@ class MainActivity : AppCompatActivity() {
                 if (!query.isNullOrBlank()) {
                     productoViewModel.setSearchQuery(query)
                     searchView?.clearFocus()
+
                     // Manejar visibilidad del mensaje basado en la longitud
                     updateSearchHintVisibility(query)
                 }
@@ -426,8 +564,10 @@ class MainActivity : AppCompatActivity() {
             override fun onQueryTextChange(newText: String?): Boolean {
                 // Actualizar la consulta en el ViewModel
                 productoViewModel.setSearchQuery(newText ?: "")
+
                 // Manejar visibilidad del mensaje basado en la longitud
                 updateSearchHintVisibility(newText)
+
                 return true
             }
         })
@@ -435,23 +575,15 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    private fun updateSearchHintVisibility(text: String?) {
-        if (searchViewExpanded) {
-            if (text.isNullOrEmpty() || text.length < 2) {
-                binding.tvSearchHint.visibility = View.VISIBLE
-            } else {
-                binding.tvSearchHint.visibility = View.GONE
-            }
-        } else {
-            binding.tvSearchHint.visibility = View.GONE
-        }
-    }
-
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_sync -> {
-                syncViewModel.syncData()
+                // Solo permitir sincronización si hay conexión
+                if (isNetworkAvailable) {
+                    syncViewModel.syncData()
+                } else {
+                    Toast.makeText(this, "No hay conexión a internet. No es posible sincronizar.", Toast.LENGTH_SHORT).show()
+                }
                 true
             }
             else -> super.onOptionsItemSelected(item)

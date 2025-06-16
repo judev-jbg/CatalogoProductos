@@ -130,14 +130,23 @@ class ProductoAdapter(
                 tvId.setOnClickListener { view ->
                     val context = view.context
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText("Referencia del producto", producto.referencia)
+
+                    // Extraer la parte después del doble espacio
+                    val parts = producto.referencia.split("  ", limit = 2)
+                    val textToCopy = if (parts.size > 1) {
+                        parts[1] // Tomar la parte después del doble espacio
+                    } else {
+                        producto.referencia // Si no hay doble espacio, copiar todo
+                    }
+
+                    val clip = ClipData.newPlainText("Código del producto", textToCopy)
                     clipboard.setPrimaryClip(clip)
 
                     // Mostrar mensaje de confirmación
-                    Toast.makeText(context, "Referencia '${producto.referencia}' copiada", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Código '$textToCopy' copiado", Toast.LENGTH_SHORT).show()
 
                     // Importante: NO llamar a onItemClick aquí para evitar navegación
-                    Log.d("ProductoAdapter", "Referencia copiada: ${producto.referencia}")
+                    Log.d("ProductoAdapter", "Código copiado: $textToCopy (de referencia completa: ${producto.referencia})")
 
                     // Evitar que el evento se propague al contenedor padre
                     // (esto evita que se ejecute el click del root)

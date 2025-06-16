@@ -26,6 +26,7 @@ class SyncViewModel(
     private val context: Context
 ) : ViewModel() {
     var justCompletedSync = false
+
     // Estado de última actualización
     private val _ultimaActualizacion = MutableStateFlow<UltimaActualizacionEntity?>(null)
     val ultimaActualizacion: StateFlow<UltimaActualizacionEntity?> = _ultimaActualizacion
@@ -74,35 +75,81 @@ class SyncViewModel(
         }
     }
 
-    // Sincronizar datos
+    // Sincronizar datos (automáticamente detecta si es inicial o incremental)
     fun syncData() {
         viewModelScope.launch {
             _isSyncing.value = true
             _error.value = null
 
             try {
-                val updateAvailable = syncRepository.checkUpdates()
+                // Verificar si es primera instalación
+                val isFirstInstallation = syncRepository.isFirstInstallation()
+                android.util.Log.d("SyncViewModel", "¿Es primera instalación?: $isFirstInstallation")
 
-                if (updateAvailable as Boolean) {
-                    val success = syncRepository.sincronizarCambios()
-                    if (success) {
-                        justCompletedSync = true
-                        loadLastUpdate()
-                        _updateAvailable.value = false
-                    } else {
-                        _error.value = "No se pudo sincronizar los datos"
-                    }
+                val success = if (isFirstInstallation) {
+                    // Primera instalación: descarga completa
+                    android.util.Log.d("SyncViewModel", "Ejecutando sincronización inicial completa")
+                    syncRepository.sincronizacionInicialCompleta()
                 } else {
-                    _error.value = "No hay actualizaciones disponibles"
+                    // Instalación existente: verificar actualizaciones y descargar solo cambios
+                    android.util.Log.d("SyncViewModel", "Verificando actualizaciones para sincronización incremental")
+                    val updateAvailable = syncRepository.checkUpdates()
+
+                    if (updateAvailable as Boolean) {
+                        android.util.Log.d("SyncViewModel", "Ejecutando sincronización incremental")
+                        syncRepository.sincronizarCambios()
+                    } else {
+                        android.util.Log.d("SyncViewModel", "No hay actualizaciones disponibles")
+                        _error.value = "No hay actualizaciones disponibles"
+                        false
+                    }
+                }
+
+                if (success) {
+                    justCompletedSync = true
+                    loadLastUpdate()
+                    _updateAvailable.value = false
+                    android.util.Log.d("SyncViewModel", "Sincronización completada exitosamente")
+                } else {
+                    _error.value = "No se pudo sincronizar los datos"
+                    android.util.Log.e("SyncViewModel", "Error en la sincronización")
                 }
             } catch (e: Exception) {
                 _error.value = "Error de sincronización: ${e.message}"
+                android.util.Log.e("SyncViewModel", "Error de sincronización", e)
             } finally {
                 _isSyncing.value = false
             }
         }
     }
 
+    // Método específico para sincronización inicial (puede ser llamado desde MainActivity)
+    fun syncInitialData() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            _error.value = null
+
+            try {
+                android.util.Log.d("SyncViewModel", "Forzando sincronización inicial completa")
+                val success = syncRepository.sincronizacionInicialCompleta()
+
+                if (success) {
+                    justCompletedSync = true
+                    loadLastUpdate()
+                    _updateAvailable.value = false
+                    android.util.Log.d("SyncViewModel", "Sincronización inicial forzada completada exitosamente")
+                } else {
+                    _error.value = "No se pudo completar la sincronización inicial"
+                    android.util.Log.e("SyncViewModel", "Error en la sincronización inicial forzada")
+                }
+            } catch (e: Exception) {
+                _error.value = "Error de sincronización inicial: ${e.message}"
+                android.util.Log.e("SyncViewModel", "Error de sincronización inicial", e)
+            } finally {
+                _isSyncing.value = false
+            }
+        }
+    }
 
     // Formatear fecha de última actualización
     private fun formatDate(timestamp: Long?) {
