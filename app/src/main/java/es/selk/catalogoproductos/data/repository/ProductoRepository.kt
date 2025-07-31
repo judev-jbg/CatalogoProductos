@@ -4,7 +4,8 @@ import android.util.Log
 import es.selk.catalogoproductos.data.local.dao.ProductoDao
 import es.selk.catalogoproductos.data.local.entity.ProductoEntity
 import kotlinx.coroutines.flow.Flow
-import java.text.Normalizer
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 
 class ProductoRepository(
     private val productoDao: ProductoDao,
@@ -19,15 +20,20 @@ class ProductoRepository(
         return if (isReferenciaSearch) {
             productoDao.searchProductosByReferencia(trimmedQuery)
         } else {
-            // Usar FTS para búsqueda por descripción
-            try {
-                // Escape special FTS characters to prevent syntax errors
-                Log.d("ProductoRepository", "Ejecutando búsqueda por FTS")
-                val safeQuery = trimmedQuery.replace("[\"*]".toRegex(), " ")
-                productoDao.searchProductosFTS(safeQuery + "*")  // Add wildcard for partial matches
-            } catch (e: Exception) {
-                // Fallback to regular search if FTS fails
-                productoDao.searchProductosByDescripcionOrFamilia(trimmedQuery)
+            // Usar FTS para búsqueda por descripción y familia
+            flow {
+                val ftsResults = try {
+                    val safeQuery = trimmedQuery.replace("[\"*]".toRegex(), " ")
+                    productoDao.searchProductosFTS("$safeQuery*").first()
+                } catch (e: Exception) {
+                    emptyList()
+                }
+
+                val likeResults = productoDao.searchProductosByDescripcionOrFamilia(trimmedQuery).first()
+
+                // Combinar y eliminar duplicados
+                val combined = (ftsResults + likeResults).distinctBy { it.referencia }
+                emit(combined)
             }
         }
     }
