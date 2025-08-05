@@ -62,6 +62,16 @@ interface ProductoDao {
             "LIMIT 100")
     fun searchProductosFTS(query: String): Flow<List<ProductoEntity>>
 
+    @Query("SELECT ultima_actualizacion FROM productos WHERE referencia = :referencia")
+    suspend fun getUltimaActualizacionByReferencia(referencia: String): Long?
+
+    @Query("SELECT COUNT(*) FROM productos WHERE referencia = :referencia")
+    suspend fun existsProductoByReferencia(referencia: String): Int
+
+    // Método para insertar productos individuales (más control)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProducto(producto: ProductoEntity)
+
     @Query("SELECT COUNT(*) FROM productos")
     suspend fun getProductCount(): Int
 

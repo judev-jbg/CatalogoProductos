@@ -47,6 +47,10 @@ class SyncViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    // Estado para estadísticas de sincronización
+    private val _syncStats = MutableStateFlow<String?>(null)
+    val syncStats: StateFlow<String?> = _syncStats
+
     init {
         loadLastUpdate()
         checkForUpdates()
@@ -75,11 +79,16 @@ class SyncViewModel(
         }
     }
 
+    fun clearError() {
+        _error.value = null
+    }
+
     // Sincronizar datos (automáticamente detecta si es inicial o incremental)
     fun syncData() {
         viewModelScope.launch {
             _isSyncing.value = true
             _error.value = null
+            _syncStats.value = null
 
             try {
                 // Verificar si es primera instalación
@@ -99,8 +108,8 @@ class SyncViewModel(
                         android.util.Log.d("SyncViewModel", "Ejecutando sincronización incremental")
                         syncRepository.sincronizarCambios()
                     } else {
-                        android.util.Log.d("SyncViewModel", "No hay actualizaciones disponibles")
-                        _error.value = "No hay actualizaciones disponibles"
+                        android.util.Log.d("SyncViewModel", "No hay actualizacón disponible")
+                        _error.value = "No hay actualización disponible"
                         false
                     }
                 }
@@ -109,16 +118,22 @@ class SyncViewModel(
                     justCompletedSync = true
                     loadLastUpdate()
                     _updateAvailable.value = false
+                    _syncStats.value = "Sincronización completada"
                     android.util.Log.d("SyncViewModel", "Sincronización completada exitosamente")
                 } else {
-                    _error.value = "No se pudo sincronizar los datos"
+                    _syncStats.value = null
                     android.util.Log.e("SyncViewModel", "Error en la sincronización")
                 }
             } catch (e: Exception) {
                 _error.value = "Error de sincronización: ${e.message}"
+                _syncStats.value = null
                 android.util.Log.e("SyncViewModel", "Error de sincronización", e)
             } finally {
                 _isSyncing.value = false
+                viewModelScope.launch {
+                    delay(3000)
+                    _syncStats.value = null
+                }
             }
         }
     }
@@ -128,6 +143,8 @@ class SyncViewModel(
         viewModelScope.launch {
             _isSyncing.value = true
             _error.value = null
+            _syncStats.value = null
+
 
             try {
                 android.util.Log.d("SyncViewModel", "Forzando sincronización inicial completa")
@@ -144,6 +161,7 @@ class SyncViewModel(
                 }
             } catch (e: Exception) {
                 _error.value = "Error de sincronización inicial: ${e.message}"
+                _syncStats.value = null
                 android.util.Log.e("SyncViewModel", "Error de sincronización inicial", e)
             } finally {
                 _isSyncing.value = false

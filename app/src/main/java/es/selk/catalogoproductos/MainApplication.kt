@@ -1,5 +1,4 @@
 package es.selk.catalogoproductos
-
 import android.app.Application
 import android.content.Context
 import android.util.Log
@@ -9,10 +8,12 @@ import androidx.work.WorkManager
 import es.selk.catalogoproductos.sync.SyncWorker
 import java.util.concurrent.TimeUnit
 import androidx.work.*
-import java.util.*
 import androidx.core.content.edit
 import es.selk.catalogoproductos.utils.NetworkUtil
 import kotlinx.coroutines.flow.MutableStateFlow
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class MainApplication : Application() {
 
@@ -31,20 +32,17 @@ class MainApplication : Application() {
 
         if (isFirstRun) {
             Log.d("MainApplication", "Primera ejecución detectada. Programando sincronización inicial.")
-            // First run - schedule immediate sync
             setupImmediateSync()
-
-            // Save that it's no longer first run
             prefs.edit() { putBoolean("is_first_run", false) }
         } else {
-            Log.d("MainApplication", "Ejecución normal. Programando sincronización diaria.")
-            // Normal run - schedule daily sync only
-            setupDailySync()
+            Log.d("MainApplication", "Ejecución normal. Programando sincronización horaria.")
         }
+
+        // Siempre programar sincronización horaria (para días laborales)
+        setupHourlySync()
     }
 
     private fun setupImmediateSync() {
-        // Verificar conectividad antes de programar
         if (!NetworkUtil.isNetworkAvailable(this)) {
             Log.d("MainApplication", "No hay conexión. Cancelando sincronización inmediata.")
             isInitialSyncRunning.value = false
@@ -56,12 +54,10 @@ class MainApplication : Application() {
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        // Create one-time work request for immediate sync
         val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(constraints)
             .build()
 
-        // Enqueue the work
         WorkManager.getInstance(this).enqueueUniqueWork(
             "initial_sync",
             ExistingWorkPolicy.REPLACE,
@@ -69,50 +65,109 @@ class MainApplication : Application() {
         )
 
         Log.d("MainApplication", "Sincronización inmediata programada.")
-
-        // Also setup daily sync
-        setupDailySync()
     }
 
-    private fun setupDailySync() {
+    private fun setupHourlySync() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        // Calculate time until 5:00 AM
-        val calendar = Calendar.getInstance()
-        val currentTimeMillis = calendar.timeInMillis
+        // Calcular delay inicial hasta la próxima ventana de sincronización
+        val initialDelay = calculateInitialDelayForBusinessHours()
 
-        // Configure for 5:00 AM
-        calendar.set(Calendar.HOUR_OF_DAY, 5)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
+        Log.d("MainApplication", "Delay inicial calculado: ${initialDelay / (1000 * 60)} minutos")
 
-        // If already past 5:00 AM, schedule for tomorrow
-        if (calendar.timeInMillis <= currentTimeMillis) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
-        }
-
-        // Calculate initial delay
-        val initialDelay = calendar.timeInMillis - currentTimeMillis
-
-        // Create the periodic work request
-        val dailySyncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
-            24, TimeUnit.HOURS, // Repeat every 24 hours
-            15, TimeUnit.MINUTES // Flex period of 15 minutes
+        // Crear trabajo periódico cada hora
+        val hourlySyncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
+            1, TimeUnit.HOURS, // Repetir cada hora
+            15, TimeUnit.MINUTES // Flex period de 15 minutos
         )
             .setConstraints(constraints)
             .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
             .build()
 
-        // Enqueue the periodic work
+        // Programar el trabajo periódico
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             SyncWorker.WORK_NAME,
             ExistingPeriodicWorkPolicy.REPLACE,
-            dailySyncRequest
+            hourlySyncRequest
         )
 
-        Log.d("MainApplication", "Sincronización diaria programada para las 5:00 AM.")
+        Log.d("MainApplication", "Sincronización horaria programada (8:45-16:45, L-V).")
+    }
+
+    private fun calculateInitialDelayForBusinessHours(): Long {
+        val calendar = Calendar.getInstance()
+        val currentTime = calendar.timeInMillis
+
+        // Encontrar la próxima ventana de sincronización (8:45 AM - 4:45 PM, L-V)
+        while (true) {
+            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+            val hour = calendar.get(Calendar.HOUR_OF_DAY)
+            val minute = calendar.get(Calendar.MINUTE)
+
+            // Verificar si es día laboral (lunes=2 a viernes=6)
+            val isWeekday = dayOfWeek in Calendar.MONDAY..Calendar.FRIDAY
+
+            if (isWeekday) {
+                // Si estamos en día laboral, verificar la hora
+                when {
+                    // Antes de las 8:45 AM - programar para 8:45 AM hoy
+                    hour < 8 || (hour == 8 && minute < 45) -> {
+                        calendar.set(Calendar.HOUR_OF_DAY, 8)
+                        calendar.set(Calendar.MINUTE, 45)
+                        calendar.set(Calendar.SECOND, 0)
+                        calendar.set(Calendar.MILLISECOND, 0)
+                        break
+                    }
+                    // Entre 8:45 AM y 4:45 PM - programar para la próxima hora :45
+                    (hour in (8..15)) && !(hour == 8 && minute < 45) && !(hour == 16 && minute >= 45) -> {
+                        val nextHour = if (hour == 8 && minute < 45) 8 else hour + 1
+                        if (nextHour <= 16) {
+                            calendar.set(Calendar.HOUR_OF_DAY, nextHour)
+                            calendar.set(Calendar.MINUTE, 45)
+                            calendar.set(Calendar.SECOND, 0)
+                            calendar.set(Calendar.MILLISECOND, 0)
+                            break
+                        } else {
+                            // Si sería después de las 4:45 PM, ir al próximo día laboral
+                            calendar.add(Calendar.DAY_OF_YEAR, 1)
+                            calendar.set(Calendar.HOUR_OF_DAY, 8)
+                            calendar.set(Calendar.MINUTE, 45)
+                            calendar.set(Calendar.SECOND, 0)
+                            calendar.set(Calendar.MILLISECOND, 0)
+                        }
+                    }
+                    // Después de las 4:45 PM - programar para mañana 8:45 AM
+                    else -> {
+                        calendar.add(Calendar.DAY_OF_YEAR, 1)
+                        calendar.set(Calendar.HOUR_OF_DAY, 8)
+                        calendar.set(Calendar.MINUTE, 45)
+                        calendar.set(Calendar.SECOND, 0)
+                        calendar.set(Calendar.MILLISECOND, 0)
+                    }
+                }
+            } else {
+                // Si es fin de semana, avanzar al próximo lunes
+                val daysUntilMonday = (Calendar.MONDAY - dayOfWeek + 7) % 7
+                if (daysUntilMonday == 0) {
+                    calendar.add(Calendar.DAY_OF_YEAR, 7) // Si es domingo, ir al próximo lunes
+                } else {
+                    calendar.add(Calendar.DAY_OF_YEAR, daysUntilMonday)
+                }
+                calendar.set(Calendar.HOUR_OF_DAY, 8)
+                calendar.set(Calendar.MINUTE, 45)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                break
+            }
+        }
+
+        val delay = calendar.timeInMillis - currentTime
+        val nextSyncTime = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(calendar.time)
+        Log.d("MainApplication", "Próxima sincronización programada para: $nextSyncTime")
+
+        return delay
     }
 
     companion object {

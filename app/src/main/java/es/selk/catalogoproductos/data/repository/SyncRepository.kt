@@ -265,9 +265,11 @@ class SyncRepository(
                 val jsonReader = JsonReader.of(source)
 
                 // Preparar procesamiento por lotes
-                val productosBatch = mutableListOf<ProductoEntity>()
+                val productosToUpdate = mutableListOf<ProductoEntity>()
                 val batchSize = 100 // Procesar 100 productos a la vez
                 var totalProcessed = 0
+                var totalSkipped = 0
+                var totalUpdated = 0
                 var success = false
 
                 // Leer array
@@ -282,30 +284,39 @@ class SyncRepository(
                         val productoResponse = adapter.fromJson(jsonReader)
 
                         if (productoResponse != null) {
-                            // Convertir a entidad y añadir al lote actual
-                            val entity = ProductoEntity(
-                                id_producto = 0,
-                                referencia = productoResponse.referencia.ifBlank { "" },
-                                descripcion = productoResponse.descripcion.ifBlank { "" },
-                                cantidad_bulto = productoResponse.cantidadBulto.takeIf { !it.isNaN() } ?: 0.0,
-                                unidad_venta = productoResponse.unidadVenta.takeIf { !it.isNaN() } ?: 0.0,
-                                familia = productoResponse.familia.ifBlank { "" },
-                                stock_actual = productoResponse.stockActual.takeIf { !it.isNaN() } ?: 0.0,
-                                precio_actual = productoResponse.precioActual.takeIf { !it.isNaN() } ?: 0.0,
-                                descuento = productoResponse.descuento.ifBlank { "" },
-                                ultima_actualizacion = productoResponse.ultimaActualizacion.takeIf { it > 0 }
-                                    ?: System.currentTimeMillis(),
-                                estado = if ((productoResponse.estado).toIntOrNull() == 0) "Activo" else "Anulado",
-                                localizacion = productoResponse.localizacion.ifBlank { "" }
-                            )
-                            productosBatch.add(entity)
+                            // Verificar si el producto necesita actualización
+                            val shouldUpdate = shouldUpdateProduct(productoResponse)
 
+                            if(shouldUpdate){
+                                // Convertir a entidad y añadir al lote actual
+                                val entity = ProductoEntity(
+                                    id_producto = 0,
+                                    referencia = productoResponse.referencia.ifBlank { "" },
+                                    descripcion = productoResponse.descripcion.ifBlank { "" },
+                                    cantidad_bulto = productoResponse.cantidadBulto.takeIf { !it.isNaN() } ?: 0.0,
+                                    unidad_venta = productoResponse.unidadVenta.takeIf { !it.isNaN() } ?: 0.0,
+                                    familia = productoResponse.familia.ifBlank { "" },
+                                    stock_actual = productoResponse.stockActual.takeIf { !it.isNaN() } ?: 0.0,
+                                    precio_actual = productoResponse.precioActual.takeIf { !it.isNaN() } ?: 0.0,
+                                    descuento = productoResponse.descuento.ifBlank { "" },
+                                    ultima_actualizacion = productoResponse.ultimaActualizacion.takeIf { it > 0 }
+                                        ?: System.currentTimeMillis(),
+                                    estado = if ((productoResponse.estado).toIntOrNull() == 0) "Activo" else "Anulado",
+                                    localizacion = productoResponse.localizacion.ifBlank { "" }
+                                )
+                                productosToUpdate.add(entity)
+                                totalUpdated++
+                            }else{
+                                totalSkipped++
+                                Log.d("SyncRepository", "Producto ${productoResponse.referencia} omitido - ya está actualizado")
+                            }
+                            totalProcessed++
                             // Si alcanzamos el tamaño del lote, insertamos y limpiamos
-                            if (productosBatch.size >= batchSize) {
-                                productoDao.insertProductos(productosBatch)
-                                totalProcessed += productosBatch.size
+                            if (productosToUpdate.size >= batchSize) {
+                                productoDao.insertProductos(productosToUpdate)
+                                totalProcessed += productosToUpdate.size
                                 Log.d("SyncRepository", "Sincronización incremental: Procesados $totalProcessed productos")
-                                productosBatch.clear()
+                                productosToUpdate.clear()
 
                                 // Liberar memoria
                                 System.gc()
@@ -323,9 +334,9 @@ class SyncRepository(
                 }
 
                 // Insertar cualquier producto restante
-                if (productosBatch.isNotEmpty()) {
-                    productoDao.insertProductos(productosBatch)
-                    totalProcessed += productosBatch.size
+                if (productosToUpdate.isNotEmpty()) {
+                    productoDao.insertProductos(productosToUpdate)
+                    totalProcessed += productosToUpdate.size
                     Log.d("SyncRepository", "Sincronización incremental: Procesados $totalProcessed productos (lote final)")
                 }
 
@@ -351,10 +362,15 @@ class SyncRepository(
                         )
                     )
 
-                    Log.d("SyncRepository", "Sincronización incremental completa. Procesados: $totalProcessed productos")
+                    Log.d("SyncRepository", "Sincronización incremental completa.")
+                    Log.d("SyncRepository", "Total procesados: $totalProcessed productos")
+                    Log.d("SyncRepository", "Productos actualizados: $totalUpdated")
+                    Log.d("SyncRepository", "Productos omitidos: $totalSkipped")
                     success = true
                 } else {
-                    Log.w("SyncRepository", "Sincronización incremental: No se procesaron productos")
+                    Log.w("SyncRepository", "Sincronización incremental: No se actualizaron productos")
+                    Log.d("SyncRepository", "Total procesados: $totalProcessed productos")
+                    Log.d("SyncRepository", "Productos omitidos: $totalSkipped")
                     success = false
                 }
 
@@ -367,6 +383,35 @@ class SyncRepository(
         }
     }
 
+    private suspend fun shouldUpdateProduct(productoResponse: ProductoResponse): Boolean {
+        return try {
+            // Obtener timestamp local del producto (si existe)
+            val localTimestamp = productoDao.getUltimaActualizacionByReferencia(productoResponse.referencia)
+
+            // Si no existe localmente, debe actualizarse
+            if (localTimestamp == null) {
+                Log.d("SyncRepository", "Producto ${productoResponse.referencia} no existe localmente - será insertado")
+                return true
+            }
+
+            // Comparar timestamps
+            val remoteTimestamp = productoResponse.ultimaActualizacion
+            val shouldUpdate = remoteTimestamp > localTimestamp
+
+            if (shouldUpdate) {
+                Log.d("SyncRepository", "Producto ${productoResponse.referencia} será actualizado - Remote: $remoteTimestamp > Local: $localTimestamp")
+            } else {
+                Log.d("SyncRepository", "Producto ${productoResponse.referencia} ya está actualizado - Remote: $remoteTimestamp <= Local: $localTimestamp")
+            }
+
+            return shouldUpdate
+
+        } catch (e: Exception) {
+            Log.e("SyncRepository", "Error verificando si producto debe actualizarse: ${productoResponse.referencia}", e)
+            // En caso de error, asumir que debe actualizarse para no perder datos
+            return true
+        }
+    }
 
     // Helper para convertir ProductoResponse a ProductoEntity
     private fun ProductoResponse.toProductoEntity(): ProductoEntity {

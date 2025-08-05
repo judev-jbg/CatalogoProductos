@@ -1,8 +1,6 @@
 package es.selk.catalogoproductos.ui.main
 
-import android.app.ActionBar
 import android.app.ActivityOptions
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PorterDuff
@@ -12,8 +10,6 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.view.ViewGroup
-import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.SearchView
@@ -390,6 +386,7 @@ class MainActivity : AppCompatActivity() {
                             if (syncViewModel.justCompletedSync) {
                                 syncViewModel.justCompletedSync = false
                                 Log.d("MainActivity", "UI: Sincronización completa, refrescando productos")
+                                Toast.makeText(this@MainActivity, "Sincronización completa", Toast.LENGTH_SHORT).show()
                                 productoViewModel.refreshProducts()
 
                                 // Actualizar mensaje offline si es necesario (después de primera sincronización)
@@ -410,6 +407,7 @@ class MainActivity : AppCompatActivity() {
                 launch {
                     productoViewModel.error.collectLatest { error ->
                         if (error != null) {
+
                             Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -419,7 +417,10 @@ class MainActivity : AppCompatActivity() {
                 launch {
                     syncViewModel.error.collectLatest { error ->
                         if (error != null) {
+
                             Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
+                            // Limpiar el error después de mostrarlo para evitar re-emisiones
+                            syncViewModel.clearError()
                         }
                     }
                 }

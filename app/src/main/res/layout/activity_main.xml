@@ -17,7 +17,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@color/primary"
-            app:subtitle="v1.6.0"
+            app:subtitle="v1.7.0"
             app:subtitleTextColor="@android:color/secondary_text_dark"
             app:subtitleTextAppearance="@style/TextAppearance.AppCompat.Small"
             app:title="SELK"
