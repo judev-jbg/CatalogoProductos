@@ -27,16 +27,19 @@ import androidx.recyclerview.widget.RecyclerView
 import es.selk.catalogoproductos.MainApplication
 import es.selk.catalogoproductos.R
 import es.selk.catalogoproductos.data.local.database.AppDatabase
+import es.selk.catalogoproductos.data.local.entity.ProductoEntity
 import es.selk.catalogoproductos.data.repository.ProductoRepository
 import es.selk.catalogoproductos.data.repository.SyncRepository
 import es.selk.catalogoproductos.databinding.ActivityMainBinding
 import es.selk.catalogoproductos.ui.adapter.ProductoAdapter
+import es.selk.catalogoproductos.ui.adapter.ProductoSkeletonAdapter
 import es.selk.catalogoproductos.ui.detail.ProductDetailActivity
 import es.selk.catalogoproductos.ui.viewmodel.ProductoViewModel
 import es.selk.catalogoproductos.ui.viewmodel.StockFilter
 import es.selk.catalogoproductos.ui.viewmodel.SyncViewModel
 import es.selk.catalogoproductos.utils.NetworkUtil
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -78,6 +81,8 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent, options.toBundle())
     }
 
+    private val skeletonAdapter = ProductoSkeletonAdapter(10)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -86,6 +91,7 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
 
         setupRecyclerView()
+        setupSkeletonRecyclerView()
         setupListeners()
         setupStockFilterChips()
         setupNetworkObserver()
@@ -109,6 +115,47 @@ class MainActivity : AppCompatActivity() {
         }
 
         productoViewModel = ViewModelProvider(this, factory)[ProductoViewModel::class.java]
+    }
+
+    private fun setupSkeletonRecyclerView() {
+        val columnCount = resources.getInteger(R.integer.grid_column_count)
+        val layoutManager = GridLayoutManager(this, columnCount)
+
+        binding.skeletonRecyclerView.layoutManager = layoutManager
+        binding.skeletonRecyclerView.adapter = skeletonAdapter
+
+        val spacing = resources.getDimensionPixelSize(R.dimen.card_margin)
+        binding.skeletonRecyclerView.addItemDecoration(
+            GridSpacingItemDecoration(columnCount, spacing, true)
+        )
+    }
+
+    private fun setupRecyclerView() {
+        val columnCount = resources.getInteger(R.integer.grid_column_count)
+        val layoutManager = GridLayoutManager(this, columnCount)
+
+        binding.recyclerView.clearItemDecorations()
+
+        val spacing = resources.getDimensionPixelSize(R.dimen.card_margin)
+        binding.recyclerView.addItemDecoration(GridSpacingItemDecoration(columnCount, spacing, true))
+
+        binding.recyclerView.layoutManager = layoutManager
+        binding.recyclerView.adapter = productoAdapter
+
+        binding.recyclerView.apply {
+            // Deshabilitar animaciones predeterminadas para que aparezcan más rápido
+            itemAnimator = null
+
+            // Configurar cache para mejor rendimiento
+            setHasFixedSize(true)
+            setItemViewCacheSize(20)
+
+            // Habilitar drawing cache
+            isDrawingCacheEnabled = true
+            drawingCacheQuality = android.view.View.DRAWING_CACHE_QUALITY_HIGH
+        }
+
+        Log.d("MainActivity", "RecyclerView configurado correctamente")
     }
 
     private fun setupNetworkObserver() {
@@ -239,43 +286,8 @@ class MainActivity : AppCompatActivity() {
         productoViewModel.resetStockFilter()
     }
 
-    private fun setupRecyclerView() {
-        val columnCount = resources.getInteger(R.integer.grid_column_count)
-        val layoutManager = GridLayoutManager(this, columnCount)
-        layoutManager.scrollToPositionWithOffset(0, 0)
 
-        // Limpiar decoraciones existentes y agregar una nueva
-        binding.recyclerView.clearItemDecorations()
 
-        val spacing = resources.getDimensionPixelSize(R.dimen.card_margin)
-        binding.recyclerView.addItemDecoration(GridSpacingItemDecoration(columnCount, spacing, true))
-
-        binding.recyclerView.layoutManager = layoutManager
-        binding.recyclerView.adapter = productoAdapter
-
-        binding.recyclerView.scrollToPosition(0)
-
-        // Agregar este listener para forzar relayout cuando cambia la lista
-        productoAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
-            override fun onChanged() {
-                binding.recyclerView.post { binding.recyclerView.invalidateItemDecorations() }
-            }
-
-            override fun onItemRangeChanged(positionStart: Int, itemCount: Int) {
-                binding.recyclerView.post { binding.recyclerView.invalidateItemDecorations() }
-            }
-
-            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                binding.recyclerView.post { binding.recyclerView.invalidateItemDecorations() }
-            }
-
-            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                binding.recyclerView.post { binding.recyclerView.invalidateItemDecorations() }
-            }
-        })
-    }
-
-    // Agregar esta extensión
     fun RecyclerView.clearItemDecorations() {
         while (itemDecorationCount > 0) {
             removeItemDecorationAt(0)
@@ -338,14 +350,34 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 // Observar resultados de búsqueda
                 launch {
-                    productoViewModel.searchResults.collectLatest { productos ->
-                        productoAdapter.submitList(productos)
-                        Log.d("MainActivity", "Productos cargados: ${productos.size}")
-                        binding.tvEmpty.isVisible = productos.isEmpty() && !syncViewModel.isSyncing.value
-                        binding.recyclerView.isVisible = productos.isNotEmpty()
-                        if (productos.isNotEmpty()) {
-                            binding.recyclerView.scrollToPosition(0)
-                            // Refrescar mensaje offline si hay productos por primera vez
+                    combine(
+                        productoViewModel.searchResults,
+                        productoViewModel.isLoading,
+                        syncViewModel.isSyncing
+                    ) { productos, isLoading, isSyncing ->
+                        Triple(productos, isLoading, isSyncing)
+                    }.collect { (productos, isLoading, isSyncing) ->
+                        Log.d("MainActivity", "Estado combinado - productos: ${productos.size}, isLoading: $isLoading, isSyncing: $isSyncing")
+
+                        // Actualizar adapter solo si no está cargando
+                        if (!isLoading && !isSyncing) {
+                            productoAdapter.submitList(productos) {
+                                Log.d("MainActivity", "submitList completado")
+                            }
+                        }
+
+                        // Actualizar visibilidad
+                        updateViewVisibility(
+                            productos = productos,
+                            isLoading = isLoading,
+                            isSyncing = isSyncing
+                        )
+
+                        // Scroll y refresh offline message
+                        if (productos.isNotEmpty() && !isLoading && !isSyncing) {
+                            binding.recyclerView.post {
+                                binding.recyclerView.scrollToPosition(0)
+                            }
                             refreshOfflineMessage()
                         }
                     }
@@ -354,7 +386,18 @@ class MainActivity : AppCompatActivity() {
                 // Observar estado de carga
                 launch {
                     productoViewModel.isLoading.collectLatest { isLoading ->
-                        binding.progressBar.isVisible = isLoading && !syncViewModel.isSyncing.value
+                        val isSyncing = syncViewModel.isSyncing.value
+
+                        // Mostrar skeleton cuando está cargando y NO está sincronizando
+                        binding.skeletonRecyclerView.isVisible = isLoading && !isSyncing
+
+                        // Ocultar RecyclerView principal cuando está cargando
+                        if (isLoading) {
+                            binding.recyclerView.isVisible = false
+                        }
+
+                        // ProgressBar solo para sincronización
+                        binding.progressBar.isVisible = false
                     }
                 }
 
@@ -378,20 +421,16 @@ class MainActivity : AppCompatActivity() {
                         // Solo habilitar fabSync si hay conexión Y no se está sincronizando
                         binding.fabSync.isEnabled = isNetworkAvailable && !isSyncing
 
-                        // If sync just completed, refresh the product list
-                        if (isSyncing) {
-                            binding.tvEmpty.isVisible = false
-                        } else {
-                            // Si terminó la sincronización y hay que refrescar
-                            if (syncViewModel.justCompletedSync) {
-                                syncViewModel.justCompletedSync = false
-                                Log.d("MainActivity", "UI: Sincronización completa, refrescando productos")
-                                Toast.makeText(this@MainActivity, "Sincronización completa", Toast.LENGTH_SHORT).show()
-                                productoViewModel.refreshProducts()
+                        binding.syncOverlay.isVisible = isSyncing
+                        binding.fabSync.isEnabled = isNetworkAvailable && !isSyncing
 
-                                // Actualizar mensaje offline si es necesario (después de primera sincronización)
-                                refreshOfflineMessage()
-                            }
+                        // If sync just completed, refresh the product list
+                        if (!isSyncing && syncViewModel.justCompletedSync) {
+                            syncViewModel.justCompletedSync = false
+                            Log.d("MainActivity", "UI: Sincronización completa, refrescando productos")
+                            Toast.makeText(this@MainActivity, "Sincronización completa", Toast.LENGTH_SHORT).show()
+                            productoViewModel.refreshProducts()
+                            refreshOfflineMessage()
                         }
                     }
                 }
@@ -428,18 +467,62 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Método para controlar la visibilidad del mensaje de ayuda para búsqueda
-    private fun updateSearchHintVisibility(text: String?) {
-        if (searchViewExpanded) {
-            if (text.isNullOrEmpty() || text.length < 3) {
-                binding.tvSearchHint.visibility = View.VISIBLE
-            } else {
-                binding.tvSearchHint.visibility = View.GONE
+    /**
+     * Función centralizada para manejar la visibilidad de las vistas
+     * según el estado actual de la aplicación
+     */
+    private fun updateViewVisibility(
+        productos: List<ProductoEntity>,
+        isLoading: Boolean,
+        isSyncing: Boolean
+    ) {
+        Log.d("MainActivity", "updateViewVisibility - productos: ${productos.size}, isLoading: $isLoading, isSyncing: $isSyncing")
+
+        when {
+            // Caso 1: Está sincronizando - mostrar overlay (ocultar todo lo demás)
+            isSyncing -> {
+                Log.d("MainActivity", "Estado: Sincronizando")
+                binding.skeletonRecyclerView.isVisible = false
+                binding.recyclerView.isVisible = false
+                binding.tvEmpty.isVisible = false
+                binding.progressBar.isVisible = false
             }
-        } else {
-            binding.tvSearchHint.visibility = View.GONE
+
+            // Caso 2: Está cargando/buscando - mostrar skeleton
+            isLoading -> {
+                Log.d("MainActivity", "Estado: Cargando")
+                binding.skeletonRecyclerView.isVisible = true
+                binding.recyclerView.isVisible = false
+                binding.tvEmpty.isVisible = false
+                binding.progressBar.isVisible = false
+            }
+
+            // Caso 3: Carga completa con productos - mostrar RecyclerView
+            productos.isNotEmpty() -> {
+                Log.d("MainActivity", "Estado: Mostrando ${productos.size} productos")
+                binding.skeletonRecyclerView.isVisible = false
+                binding.recyclerView.isVisible = true
+                binding.tvEmpty.isVisible = false
+                binding.progressBar.isVisible = false
+
+                // Forzar invalidación del RecyclerView para asegurar que se dibuje
+                binding.recyclerView.post {
+                    binding.recyclerView.requestLayout()
+                    binding.recyclerView.invalidate()
+                }
+            }
+
+            // Caso 4: Carga completa sin productos - mostrar mensaje vacío
+            else -> {
+                Log.d("MainActivity", "Estado: Sin productos")
+                binding.skeletonRecyclerView.isVisible = false
+                binding.recyclerView.isVisible = false
+                binding.tvEmpty.isVisible = true
+                binding.progressBar.isVisible = false
+            }
         }
     }
+
 
     override fun onBackPressed() {
         // Añadimos manejo específico para el botón atrás
@@ -447,9 +530,6 @@ class MainActivity : AppCompatActivity() {
             Log.d("MainActivity", "onBackPressed: SearchView está expandido, colapsando")
             searchView?.setQuery("", false)
             searchView?.isIconified = true
-
-            // Ocultar el mensaje de ayuda para búsqueda
-            binding.tvSearchHint.visibility = View.GONE
 
             resetFiltersToDefault()
         } else {
@@ -512,7 +592,7 @@ class MainActivity : AppCompatActivity() {
             searchViewExpanded = true
 
             // Mostrar el mensaje de ayuda para búsqueda
-            binding.tvSearchHint.visibility = View.VISIBLE
+            //binding.tvSearchHint.visibility = View.VISIBLE
         }
 
         // Detector de colapso
@@ -521,7 +601,7 @@ class MainActivity : AppCompatActivity() {
             searchViewExpanded = false
 
             // Ocultar el mensaje de ayuda para búsqueda
-            binding.tvSearchHint.visibility = View.GONE
+            //binding.tvSearchHint.visibility = View.GONE
 
             resetFiltersToDefault()
             false
@@ -533,7 +613,7 @@ class MainActivity : AppCompatActivity() {
                 searchViewExpanded = true
 
                 // Mostrar el mensaje de ayuda para búsqueda
-                binding.tvSearchHint.visibility = View.VISIBLE
+                //binding.tvSearchHint.visibility = View.VISIBLE
 
                 return true
             }
@@ -543,7 +623,7 @@ class MainActivity : AppCompatActivity() {
                 searchViewExpanded = false
 
                 // Ocultar el mensaje de ayuda para búsqueda
-                binding.tvSearchHint.visibility = View.GONE
+                //binding.tvSearchHint.visibility = View.GONE
 
                 resetFiltersToDefault()
                 return true
@@ -557,7 +637,7 @@ class MainActivity : AppCompatActivity() {
                     searchView?.clearFocus()
 
                     // Manejar visibilidad del mensaje basado en la longitud
-                    updateSearchHintVisibility(query)
+                   // updateSearchHintVisibility(query)
                 }
                 return true
             }
@@ -567,7 +647,7 @@ class MainActivity : AppCompatActivity() {
                 productoViewModel.setSearchQuery(newText ?: "")
 
                 // Manejar visibilidad del mensaje basado en la longitud
-                updateSearchHintVisibility(newText)
+                //updateSearchHintVisibility(newText)
 
                 return true
             }

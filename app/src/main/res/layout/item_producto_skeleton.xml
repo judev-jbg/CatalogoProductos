@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Skeleton para referencia -->
+        <View
+            android:id="@+id/skeleton_referencia"
+            android:layout_width="120dp"
+            android:layout_height="16dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/skeleton_background" />
+
+        <!-- Skeleton para descripción -->
+        <View
+            android:id="@+id/skeleton_descripcion"
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/skeleton_background" />
+
+        <View
+            android:id="@+id/skeleton_descripcion2"
+            android:layout_width="200dp"
+            android:layout_height="20dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/skeleton_background" />
+
+        <!-- Skeleton para familia -->
+        <View
+            android:id="@+id/skeleton_familia"
+            android:layout_width="100dp"
+            android:layout_height="14dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/skeleton_background" />
+
+        <!-- Skeleton para precio -->
+        <View
+            android:id="@+id/skeleton_precio"
+            android:layout_width="80dp"
+            android:layout_height="18dp"
+            android:background="@drawable/skeleton_background" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

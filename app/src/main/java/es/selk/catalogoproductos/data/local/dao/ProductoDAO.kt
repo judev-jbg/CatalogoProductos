@@ -15,52 +15,58 @@ interface ProductoDao {
             "    LIMIT 100" +
             ")" +
             "ORDER BY " +
-            "    CASE WHEN estado = 'Activo' THEN 1 " +
-            "         WHEN estado = 'Anulado' THEN 2 " +
-            "         ELSE 3 " +
+            "    CASE WHEN estado = 'Activo' AND stock_actual > 0 THEN 1 " +
+            "         WHEN estado = 'Activo' AND stock_actual <= 0 THEN 2 " +
+            "         WHEN estado = 'Anulado' THEN 3 " +
+            "         ELSE 4 " +
             "    END," +
             "    RANDOM()")
     fun getAllProductosFlow(): Flow<List<ProductoEntity>>
 
+    // Búsqueda por referencia - SIN LIMIT para permitir filtrado posterior
     @Query("SELECT * FROM productos " +
             "WHERE referencia LIKE :query || '%' COLLATE NOCASE " +
             "ORDER BY " +
-            "   CASE WHEN estado = 'Activo' THEN 1 " +
-            "        WHEN estado = 'Anulado' THEN 2 " +
-            "        ELSE 3 " +
+            "   CASE WHEN estado = 'Activo' AND stock_actual > 0 THEN 1 " +
+            "        WHEN estado = 'Activo' AND stock_actual <= 0 THEN 2 " +
+            "        WHEN estado = 'Anulado' THEN 3 " +
+            "        ELSE 4 " +
             "   END, " +
-            "   referencia " +
-            "LIMIT 100")
-    fun searchProductosByReferencia(query: String): Flow<List<ProductoEntity>>
+            "   referencia")
+    suspend fun searchProductosByReferencia(query: String): List<ProductoEntity>
 
+    // Búsqueda por descripción - SIN LIMIT para permitir filtrado posterior
     @Query("SELECT * FROM productos " +
-            "WHERE descripcion LIKE '%' || :query || '%' COLLATE NOCASE " +
-            "   OR familia LIKE '%' || :query COLLATE NOCASE " +
+            "WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(" +
+            "      LOWER(descripcion), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u') " +
+            "LIKE '%' || REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(" +
+            "      LOWER(:query), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u') || '%' " +
             "ORDER BY " +
-            "   CASE WHEN estado = 'Activo' THEN 1 " +
-            "        WHEN estado = 'Anulado' THEN 2 " +
-            "        ELSE 3 " +
+            "   CASE WHEN estado = 'Activo' AND stock_actual > 0 THEN 1 " +
+            "        WHEN estado = 'Activo' AND stock_actual <= 0 THEN 2 " +
+            "        WHEN estado = 'Anulado' THEN 3 " +
+            "        ELSE 4 " +
             "   END, " +
-            "   descripcion " +
-            "LIMIT 100")
-    fun searchProductosByDescripcionOrFamilia(query: String): Flow<List<ProductoEntity>>
+            "   descripcion")
+    suspend fun searchProductosByDescripcion(query: String): List<ProductoEntity>
 
+    // Búsqueda por familia - SIN LIMIT para permitir filtrado posterior
+    @Query("SELECT * FROM productos " +
+            "WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(" +
+            "      LOWER(familia), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u') " +
+            "LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(" +
+            "      LOWER(:query), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u') || '%' " +
+            "ORDER BY " +
+            "   CASE WHEN estado = 'Activo' AND stock_actual > 0 THEN 1 " +
+            "        WHEN estado = 'Activo' AND stock_actual <= 0 THEN 2 " +
+            "        WHEN estado = 'Anulado' THEN 3 " +
+            "        ELSE 4 " +
+            "   END, " +
+            "   familia, descripcion")
+    suspend fun searchProductosByFamilia(query: String): List<ProductoEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProductos(productos: List<ProductoEntity>)
-
-
-    @Query("SELECT p.* FROM productos p " +
-            "JOIN productos_fts ON p.rowid = productos_fts.rowid " +
-            "WHERE productos_fts MATCH :query " +
-            "ORDER BY  " +
-            "    CASE WHEN p.estado = 'Activo' THEN 1 " +
-            "         WHEN p.estado = 'Anulado' THEN 2 " +
-            "         ELSE 3 " +
-            "    END, " +
-            "    p.descripcion " +
-            "LIMIT 100")
-    fun searchProductosFTS(query: String): Flow<List<ProductoEntity>>
 
     @Query("SELECT ultima_actualizacion FROM productos WHERE referencia = :referencia")
     suspend fun getUltimaActualizacionByReferencia(referencia: String): Long?
@@ -68,11 +74,9 @@ interface ProductoDao {
     @Query("SELECT COUNT(*) FROM productos WHERE referencia = :referencia")
     suspend fun existsProductoByReferencia(referencia: String): Int
 
-    // Método para insertar productos individuales (más control)
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProducto(producto: ProductoEntity)
 
     @Query("SELECT COUNT(*) FROM productos")
     suspend fun getProductCount(): Int
-
 }

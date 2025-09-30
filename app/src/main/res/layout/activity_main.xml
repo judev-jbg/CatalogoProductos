@@ -121,14 +121,29 @@
                 </com.google.android.material.chip.ChipGroup>
             </HorizontalScrollView>
 
+            <!-- RecyclerView para skeleton loading -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/skeletonRecyclerView"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/filterScrollView"
+                tools:listitem="@layout/item_producto_skeleton"
+                tools:visibility="visible" />
+
+            <!-- RecyclerView principal -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerView"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:clipToPadding="false"
-                android:padding="4dp"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                android:layout_marginTop="8dp"
                 app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/filterScrollView"
                 tools:listitem="@layout/item_producto" />
 

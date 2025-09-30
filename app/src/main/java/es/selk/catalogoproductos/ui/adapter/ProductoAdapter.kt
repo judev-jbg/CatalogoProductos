@@ -39,19 +39,19 @@ class ProductoAdapter(
         val newList = list?.toList() ?: emptyList()
         super.submitList(newList)
         {
-            // Este callback se ejecuta cuando la operación DiffUtil está completa
-            val recyclerView = currentList.let { recyclerView }
-            recyclerView?.scrollToPosition(0)
+            recyclerView?.post {
+                recyclerView?.scrollToPosition(0)
+            }
         }
     }
 
     override fun onBindViewHolder(holder: ProductoViewHolder, position: Int) {
         Log.d("ProductoAdapter", "Binding producto: ${getItem(position).descripcion}")
         holder.bind(getItem(position))
-        holder.itemView.alpha = 0.7f
+        holder.itemView.alpha = 0.8f
         holder.itemView.animate()
             .alpha(1f)
-            .setDuration(100)
+            .setDuration(50)
             .setInterpolator(AccelerateDecelerateInterpolator())
             .start()
     }
@@ -152,6 +152,9 @@ class ProductoAdapter(
                     // (esto evita que se ejecute el click del root)
                 }
                 root.setOnClickListener { onItemClick(producto) }
+                root.post {
+                    root.requestLayout()
+                }
             }
         }
     }
