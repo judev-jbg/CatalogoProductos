@@ -1,5 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.CatalogoProductos" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+
         <!-- Colores primarios -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryVariant">@color/primary_variant</item>
@@ -13,5 +14,26 @@
         <item name="colorSurface">@color/surface</item>
         <!-- Barra de estado -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="checkedIconTint">@android:color/white</item>
     </style>
+
+    <style name="Theme.App.SplashScreen" parent="Theme.CatalogoProductos">
+        <!-- Fondo blanco del splash screen -->
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+
+        <!-- Icono del splash screen (opcional) -->
+        <!--<item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item> -->
+
+        <!-- Color del icono (opcional) -->
+        <!--<item name="windowSplashScreenIconBackgroundColor">@color/md_theme_light_primary</item> -->
+
+        <!-- Duración de la animación (opcional) -->
+        <!--<item name="windowSplashScreenAnimationDuration">500</item> -->
+
+        <!-- Tema que se aplica después del splash -->
+        <item name="postSplashScreenTheme">@style/Theme.CatalogoProductos</item>
+    </style>
+
+
+
 </resources>

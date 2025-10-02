@@ -1,18 +1,16 @@
 package es.selk.catalogoproductos.ui.main
 
+import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.PorterDuff
-import android.graphics.Rect
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.SearchView
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -27,7 +25,6 @@ import androidx.recyclerview.widget.RecyclerView
 import es.selk.catalogoproductos.MainApplication
 import es.selk.catalogoproductos.R
 import es.selk.catalogoproductos.data.local.database.AppDatabase
-import es.selk.catalogoproductos.data.local.entity.ProductoEntity
 import es.selk.catalogoproductos.data.repository.ProductoRepository
 import es.selk.catalogoproductos.data.repository.SyncRepository
 import es.selk.catalogoproductos.databinding.ActivityMainBinding
@@ -41,11 +38,17 @@ import es.selk.catalogoproductos.utils.NetworkUtil
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import android.graphics.Rect
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.work.WorkManager
+import androidx.work.await
+import es.selk.catalogoproductos.data.local.entity.ProductoEntity
+import es.selk.catalogoproductos.sync.SyncWorker
+import java.util.Calendar
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private var searchView: SearchView? = null
-    private var searchViewExpanded = false
+    private var isSearchBarVisible = false
     private var isNetworkAvailable = true
 
     private val db by lazy { AppDatabase.getInstance(applicationContext) }
@@ -84,17 +87,27 @@ class MainActivity : AppCompatActivity() {
     private val skeletonAdapter = ProductoSkeletonAdapter(10)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setSupportActionBar(binding.toolbar)
+        val factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return ProductoViewModel(productoRepository) as T
+            }
+        }
+
+        productoViewModel = ViewModelProvider(this, factory)[ProductoViewModel::class.java]
 
         setupRecyclerView()
         setupSkeletonRecyclerView()
+        setupSearchBar()
         setupListeners()
         setupStockFilterChips()
         setupNetworkObserver()
+        checkInitialNetworkStatus()
 
         lifecycleScope.launch {
             MainApplication.isInitialSyncRunning.collect { isRunning ->
@@ -107,14 +120,13 @@ class MainActivity : AppCompatActivity() {
 
         observeViewModel()
 
-        val factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return ProductoViewModel(productoRepository) as T
-            }
-        }
 
-        productoViewModel = ViewModelProvider(this, factory)[ProductoViewModel::class.java]
+    }
+
+    private fun checkInitialNetworkStatus() {
+        val isConnected = NetworkUtil.isNetworkAvailable(this)
+        isNetworkAvailable = isConnected
+        updateNetworkStatus(isConnected)
     }
 
     private fun setupSkeletonRecyclerView() {
@@ -158,6 +170,121 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "RecyclerView configurado correctamente")
     }
 
+    private fun setupSearchBar() {
+        // Click en el botón de búsqueda para expandir la barra
+        binding.btnSearch.setOnClickListener {
+            showSearchBar()
+        }
+
+        // TextWatcher para búsqueda reactiva
+        binding.searchEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s?.toString() ?: ""
+                productoViewModel.setSearchQuery(query)
+
+                // Mostrar/ocultar botón de limpiar
+                binding.btnClearSearch.isVisible = query.isNotEmpty()
+                binding.btnCloseSearch.isVisible = !binding.btnClearSearch.isVisible
+            }
+
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        // Botón de limpiar
+        binding.btnClearSearch.setOnClickListener {
+            val currentText = binding.searchEditText.text.toString()
+
+            if (currentText.isNotEmpty()) {
+                // Si hay texto, limpiarlo
+                binding.searchEditText.text.clear()
+                binding.btnClearSearch.isVisible = false
+            }
+        }
+
+        // Botón de cerrar
+        binding.btnCloseSearch.setOnClickListener {
+            val currentText = binding.searchEditText.text.toString()
+
+            if (currentText.isEmpty()) {
+                // Si no hay texto, cerrar
+                binding.searchEditText.text.clear()
+                binding.btnClearSearch.isVisible = false
+                binding.btnCloseSearch.isVisible = false
+                hideSearchBar()
+            }
+        }
+
+        // Acción del teclado (botón de búsqueda)
+        binding.searchEditText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                hideKeyboard()
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun showSearchBar() {
+        if (isSearchBarVisible) return
+
+        isSearchBarVisible = true
+        binding.searchBarContainer.visibility = View.VISIBLE
+
+        // Animación de entrada
+        binding.searchBarContainer.alpha = 0f
+        binding.searchBarContainer.translationY = -50f
+        binding.searchBarContainer.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(250)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withEndAction {
+                // Mostrar teclado y dar foco al EditText
+                binding.searchEditText.requestFocus()
+                showKeyboard()
+            }
+            .start()
+
+        Log.d("MainActivity", "Barra de búsqueda mostrada")
+    }
+
+    private fun hideSearchBar() {
+        if (!isSearchBarVisible) return
+
+        isSearchBarVisible = false
+
+        // Limpiar texto y resetear filtros
+        binding.searchEditText.text.clear()
+        resetFiltersToDefault()
+        hideKeyboard()
+
+        // Animación de salida
+        binding.searchBarContainer.animate()
+            .alpha(0f)
+            .translationY(-50f)
+            .setDuration(200)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withEndAction {
+                binding.searchBarContainer.visibility = View.GONE
+            }
+            .start()
+
+        Log.d("MainActivity", "Barra de búsqueda ocultada")
+    }
+
+    private fun showKeyboard() {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.showSoftInput(binding.searchEditText, InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private fun hideKeyboard() {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(binding.searchEditText.windowToken, 0)
+    }
+
     private fun setupNetworkObserver() {
         // Observar cambios en la conectividad de red
         NetworkUtil.NetworkLiveData(this).observe(this) { isConnected ->
@@ -171,29 +298,24 @@ class MainActivity : AppCompatActivity() {
 
         if (!isConnected) {
             // Si no hay conexión, determinar el mensaje apropiado
+            binding.fabSync.visibility = View.GONE
             lifecycleScope.launch {
                 val offlineMessage = determineOfflineMessage()
                 binding.tvOfflineStatus.text = offlineMessage
                 binding.tvOfflineStatus.isVisible = true
                 Log.d("MainActivity", "Mensaje offline establecido: $offlineMessage")
             }
+
         } else {
             // Si hay conexión, ocultar el mensaje
             binding.tvOfflineStatus.isVisible = false
+            binding.fabSync.visibility = View.VISIBLE
 
             // Verificar si necesitamos ejecutar sincronización inicial automática
             checkAndRunInitialSync()
         }
 
-        // Habilitar/deshabilitar botón de sincronización
-        binding.fabSync.isEnabled = isConnected
 
-        // Cambiar apariencia del botón cuando está deshabilitado
-        if (isConnected) {
-            binding.fabSync.alpha = 1.0f
-        } else {
-            binding.fabSync.alpha = 0.5f
-        }
     }
 
     /**
@@ -286,8 +408,6 @@ class MainActivity : AppCompatActivity() {
         productoViewModel.resetStockFilter()
     }
 
-
-
     fun RecyclerView.clearItemDecorations() {
         while (itemDecorationCount > 0) {
             removeItemDecorationAt(0)
@@ -342,6 +462,74 @@ class MainActivity : AppCompatActivity() {
             } else {
                 Toast.makeText(this, "No hay conexión a internet. No es posible sincronizar.", Toast.LENGTH_SHORT).show()
             }
+        }
+        binding.fabSync.setOnLongClickListener {
+            showWorkManagerDiagnostic()
+            true
+        }
+    }
+
+    @SuppressLint("RestrictedApi")
+    private fun showWorkManagerDiagnostic() {
+        lifecycleScope.launch {
+            val workManager = WorkManager.getInstance(applicationContext)
+            val workInfos = workManager.getWorkInfosForUniqueWork(SyncWorker.WORK_NAME).await()
+
+            val diagnostic = buildString {
+                appendLine("=== Diagnóstico WorkManager ===")
+                appendLine("Trabajos encontrados: ${workInfos.size}")
+                appendLine()
+
+                workInfos.forEachIndexed { index, workInfo ->
+                    appendLine("Trabajo #${index + 1}:")
+                    appendLine("  Estado: ${workInfo.state}")
+                    appendLine("  Intentos: ${workInfo.runAttemptCount}")
+                    appendLine("  ID: ${workInfo.id}")
+                    appendLine()
+                }
+
+                val calendar = Calendar.getInstance()
+                val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+                val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                val minute = calendar.get(Calendar.MINUTE)
+
+                appendLine("Hora actual: ${String.format("%02d:%02d", hour, minute)}")
+                appendLine("Día: ${getDayName(dayOfWeek)}")
+
+                val isWeekday = dayOfWeek in Calendar.MONDAY..Calendar.FRIDAY
+                val currentTimeInMinutes = hour * 60 + minute
+                val startTime = 8 * 60
+                val endTime = 17 * 60
+                val isInBusinessHours = isWeekday && currentTimeInMinutes in startTime until endTime
+
+                appendLine("¿Horario laboral?: $isInBusinessHours")
+                appendLine("¿Red disponible?: $isNetworkAvailable")
+            }
+
+            Log.d("MainActivity", diagnostic)
+
+            // Mostrar en un AlertDialog
+            androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("Diagnóstico de Sincronización")
+                .setMessage(diagnostic)
+                .setPositiveButton("OK", null)
+                .setNeutralButton("Forzar Ahora") { _, _ ->
+                    syncViewModel.syncData()
+                }
+                .show()
+        }
+    }
+
+    private fun getDayName(dayOfWeek: Int): String {
+        return when (dayOfWeek) {
+            Calendar.SUNDAY -> "Domingo"
+            Calendar.MONDAY -> "Lunes"
+            Calendar.TUESDAY -> "Martes"
+            Calendar.WEDNESDAY -> "Miércoles"
+            Calendar.THURSDAY -> "Jueves"
+            Calendar.FRIDAY -> "Viernes"
+            Calendar.SATURDAY -> "Sábado"
+            else -> "Desconocido"
         }
     }
 
@@ -419,10 +607,13 @@ class MainActivity : AppCompatActivity() {
                         binding.syncOverlay.isVisible = isSyncing
 
                         // Solo habilitar fabSync si hay conexión Y no se está sincronizando
-                        binding.fabSync.isEnabled = isNetworkAvailable && !isSyncing
+                        if(isNetworkAvailable && !isSyncing){
+                            binding.fabSync.visibility = View.VISIBLE
+                        }else{
+                            binding.fabSync.visibility = View.GONE
+                        }
 
                         binding.syncOverlay.isVisible = isSyncing
-                        binding.fabSync.isEnabled = isNetworkAvailable && !isSyncing
 
                         // If sync just completed, refresh the product list
                         if (!isSyncing && syncViewModel.justCompletedSync) {
@@ -486,6 +677,7 @@ class MainActivity : AppCompatActivity() {
                 binding.recyclerView.isVisible = false
                 binding.tvEmpty.isVisible = false
                 binding.progressBar.isVisible = false
+                binding.fabSync.visibility = View.GONE
             }
 
             // Caso 2: Está cargando/buscando - mostrar skeleton
@@ -494,7 +686,8 @@ class MainActivity : AppCompatActivity() {
                 binding.skeletonRecyclerView.isVisible = true
                 binding.recyclerView.isVisible = false
                 binding.tvEmpty.isVisible = false
-                binding.progressBar.isVisible = false
+                binding.progressBar.isVisible = true
+                binding.fabSync.visibility = View.VISIBLE
             }
 
             // Caso 3: Carga completa con productos - mostrar RecyclerView
@@ -504,6 +697,7 @@ class MainActivity : AppCompatActivity() {
                 binding.recyclerView.isVisible = true
                 binding.tvEmpty.isVisible = false
                 binding.progressBar.isVisible = false
+                binding.fabSync.visibility = View.VISIBLE
 
                 // Forzar invalidación del RecyclerView para asegurar que se dibuje
                 binding.recyclerView.post {
@@ -519,155 +713,21 @@ class MainActivity : AppCompatActivity() {
                 binding.recyclerView.isVisible = false
                 binding.tvEmpty.isVisible = true
                 binding.progressBar.isVisible = false
+                binding.fabSync.visibility = View.VISIBLE
             }
         }
     }
 
 
+    @Deprecated("This method has been deprecated in favor of using the\n      {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.\n      The OnBackPressedDispatcher controls how back button events are dispatched\n      to one or more {@link OnBackPressedCallback} objects.")
     override fun onBackPressed() {
-        // Añadimos manejo específico para el botón atrás
-        if (searchView != null && searchViewExpanded) {
-            Log.d("MainActivity", "onBackPressed: SearchView está expandido, colapsando")
-            searchView?.setQuery("", false)
-            searchView?.isIconified = true
-
-            resetFiltersToDefault()
+        // Si la barra de búsqueda está visible, ocultarla en lugar de salir
+        if (isSearchBarVisible) {
+            Log.d("MainActivity", "onBackPressed: Ocultando barra de búsqueda")
+            hideSearchBar()
         } else {
             super.onBackPressed()
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-
-        val searchItem = menu.findItem(R.id.action_search)
-        searchView = searchItem.actionView as SearchView
-
-        // Configurar para que use todo el ancho disponible cuando se expande
-        searchView?.maxWidth = Integer.MAX_VALUE
-
-        searchView?.queryHint = "Referencia, descripción o familia"
-
-        // Configure search text appearance
-        val searchEditText = searchView?.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
-        searchEditText?.apply {
-            // Forzar color de texto blanco siempre
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.WHITE)
-
-            // Opcional: ajustar el tamaño del texto para mejor visibilidad
-            textSize = 24f
-        }
-
-        // Cambiar color de todos los iconos a blanco
-        val searchIcon = searchView?.findViewById<ImageView>(androidx.appcompat.R.id.search_button)
-        searchIcon?.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
-
-        val closeIcon = searchView?.findViewById<ImageView>(androidx.appcompat.R.id.search_close_btn)
-        closeIcon?.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
-
-        // Botón para limpiar la consulta
-        closeIcon?.setOnClickListener {
-            Log.d("MainActivity", "Botón cerrar presionado")
-            searchView?.setQuery("", false)
-
-            // Si ya está vacío, colapsar y resetear filtros
-            if (searchView?.query.isNullOrEmpty()) {
-                Log.d("MainActivity", "Consulta vacía, colapsando y reseteando filtros")
-                searchView?.isIconified = true
-                resetFiltersToDefault()
-            }
-        }
-
-        // Cambiar color de los iconos de submit y de voz (si existen)
-        val submitIcon = searchView?.findViewById<ImageView>(androidx.appcompat.R.id.search_go_btn)
-        submitIcon?.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
-
-        val voiceIcon = searchView?.findViewById<ImageView>(androidx.appcompat.R.id.search_voice_btn)
-        voiceIcon?.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
-
-        // Monitorear directamente cambios en el estado de expansión
-        searchView?.setOnSearchClickListener {
-            Log.d("MainActivity", "SearchView expandido")
-            searchViewExpanded = true
-
-            // Mostrar el mensaje de ayuda para búsqueda
-            //binding.tvSearchHint.visibility = View.VISIBLE
-        }
-
-        // Detector de colapso
-        searchView?.setOnCloseListener {
-            Log.d("MainActivity", "SearchView colapsado")
-            searchViewExpanded = false
-
-            // Ocultar el mensaje de ayuda para búsqueda
-            //binding.tvSearchHint.visibility = View.GONE
-
-            resetFiltersToDefault()
-            false
-        }
-
-        searchItem.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
-            override fun onMenuItemActionExpand(item: MenuItem): Boolean {
-                Log.d("MainActivity", "onMenuItemActionExpand llamado")
-                searchViewExpanded = true
-
-                // Mostrar el mensaje de ayuda para búsqueda
-                //binding.tvSearchHint.visibility = View.VISIBLE
-
-                return true
-            }
-
-            override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
-                Log.d("MainActivity", "onMenuItemActionCollapse llamado")
-                searchViewExpanded = false
-
-                // Ocultar el mensaje de ayuda para búsqueda
-                //binding.tvSearchHint.visibility = View.GONE
-
-                resetFiltersToDefault()
-                return true
-            }
-        })
-
-        searchView?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                if (!query.isNullOrBlank()) {
-                    productoViewModel.setSearchQuery(query)
-                    searchView?.clearFocus()
-
-                    // Manejar visibilidad del mensaje basado en la longitud
-                   // updateSearchHintVisibility(query)
-                }
-                return true
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                // Actualizar la consulta en el ViewModel
-                productoViewModel.setSearchQuery(newText ?: "")
-
-                // Manejar visibilidad del mensaje basado en la longitud
-                //updateSearchHintVisibility(newText)
-
-                return true
-            }
-        })
-
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_sync -> {
-                // Solo permitir sincronización si hay conexión
-                if (isNetworkAvailable) {
-                    syncViewModel.syncData()
-                } else {
-                    Toast.makeText(this, "No hay conexión a internet. No es posible sincronizar.", Toast.LENGTH_SHORT).show()
-                }
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
 }

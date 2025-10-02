@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Colores principales -->
-    <color name="primary">#c10556</color>        <!-- Azul principal -->
-    <color name="primary_variant">#9B0C45</color><!-- Azul más oscuro -->
-    <color name="secondary">#FFFFFF</color>      <!-- Ámbar secundario -->
+    <color name="primary">#c10556</color>
+    <color name="primary_variant">#9B0C45</color>
+    <color name="secondary">#FFFFFF</color>
     <color name="secondary_variant">#818181</color>
 
     <!-- Colores de superficie -->
@@ -26,5 +26,10 @@
     <color name="color_bar_actualizacion">#818181</color>   <!-- Rojo para stock vacío -->
     <color name="color_estado_anulado">#CE364D</color>   <!-- Rojo para stock vacío -->
     <color name="color_estado_activo">#4CAF50</color>   <!-- Rojo para stock vacío -->
-    <color name="color_card">#FFFFFF</color>   
+    <color name="color_card">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="white">#ffffff</color>
+    <color name="warning_background">#D3890F</color>
+    <color name="warning_text">#FFF1D6</color>
+
 </resources>

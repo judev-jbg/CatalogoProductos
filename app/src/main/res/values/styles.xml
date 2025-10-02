@@ -46,6 +46,12 @@
         <item name="android:textSize">14sp</item>
         <item name="android:textColor">@color/color_bar_actualizacion</item>
         <item name="android:background">@color/background_bar_actualizacion</item>
+        <item name="fontFamily">@font/fragment_mono_regular</item>
     </style>
+
+    <string name="search_description">Buscar productos</string>
+    <string name="search_icon_description">Icono de búsqueda</string>
+    <string name="clear_search_description">Limpiar búsqueda</string>
+    <string name="sync_description">Sincronizar datos</string>
 
 </resources>

@@ -5,6 +5,7 @@
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
     app:cardCornerRadius="12dp"
+    style="@style/TextAppearance.App.Card"
     app:cardElevation="2dp">
 
     <LinearLayout
@@ -47,6 +48,7 @@
         <!-- Skeleton para precio -->
         <View
             android:id="@+id/skeleton_precio"
+
             android:layout_width="80dp"
             android:layout_height="18dp"
             android:background="@drawable/skeleton_background" />

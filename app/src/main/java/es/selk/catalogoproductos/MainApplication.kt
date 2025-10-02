@@ -1,4 +1,5 @@
 package es.selk.catalogoproductos
+
 import android.app.Application
 import android.content.Context
 import android.util.Log
@@ -35,11 +36,14 @@ class MainApplication : Application() {
             setupImmediateSync()
             prefs.edit() { putBoolean("is_first_run", false) }
         } else {
-            Log.d("MainApplication", "Ejecución normal. Programando sincronización horaria.")
+            Log.d("MainApplication", "Ejecución normal. Verificando estado de sincronización.")
         }
 
-        // Siempre programar sincronización horaria (para días laborales)
-        setupHourlySync()
+        // Siempre programar sincronización periódica
+        setupPeriodicSync()
+
+        // Log del estado actual
+        logWorkManagerStatus()
     }
 
     private fun setupImmediateSync() {
@@ -56,6 +60,7 @@ class MainApplication : Application() {
 
         val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(constraints)
+            .addTag(SYNC_WORK_TAG)
             .build()
 
         WorkManager.getInstance(this).enqueueUniqueWork(
@@ -67,111 +72,89 @@ class MainApplication : Application() {
         Log.d("MainApplication", "Sincronización inmediata programada.")
     }
 
-    private fun setupHourlySync() {
+    private fun setupPeriodicSync() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        // Calcular delay inicial hasta la próxima ventana de sincronización
-        val initialDelay = calculateInitialDelayForBusinessHours()
-
-        Log.d("MainApplication", "Delay inicial calculado: ${initialDelay / (1000 * 60)} minutos")
-
-        // Crear trabajo periódico cada hora
-        val hourlySyncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
+        // CAMBIO IMPORTANTE: Reducir el intervalo de repetición para asegurar ejecución
+        // Usar 1 hora como mínimo (es el mínimo permitido por PeriodicWork)
+        val periodicSyncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
             1, TimeUnit.HOURS, // Repetir cada hora
-            15, TimeUnit.MINUTES // Flex period de 15 minutos
+            15, TimeUnit.MINUTES // Ventana de flexibilidad
         )
             .setConstraints(constraints)
-            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+            .setInitialDelay(calculateInitialDelay(), TimeUnit.MILLISECONDS)
+            .addTag(SYNC_WORK_TAG)
+            .setBackoffCriteria(
+                BackoffPolicy.LINEAR,
+                WorkRequest.MIN_BACKOFF_MILLIS,
+                TimeUnit.MILLISECONDS
+            )
             .build()
 
         // Programar el trabajo periódico
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             SyncWorker.WORK_NAME,
-            ExistingPeriodicWorkPolicy.REPLACE,
-            hourlySyncRequest
+            ExistingPeriodicWorkPolicy.KEEP, // KEEP en lugar de REPLACE
+            periodicSyncRequest
         )
 
-        Log.d("MainApplication", "Sincronización horaria programada (8:45-16:45, L-V).")
+        Log.d("MainApplication", "Sincronización periódica programada (cada hora)")
     }
 
-    private fun calculateInitialDelayForBusinessHours(): Long {
+    /**
+     * Calcula el delay inicial hasta la próxima ejecución
+     * SIMPLIFICADO: Solo esperar hasta la próxima hora en punto
+     */
+    private fun calculateInitialDelay(): Long {
         val calendar = Calendar.getInstance()
-        val currentTime = calendar.timeInMillis
+        val currentMinute = calendar.get(Calendar.MINUTE)
+        val currentSecond = calendar.get(Calendar.SECOND)
 
-        // Encontrar la próxima ventana de sincronización (8:45 AM - 4:45 PM, L-V)
-        while (true) {
-            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-            val hour = calendar.get(Calendar.HOUR_OF_DAY)
-            val minute = calendar.get(Calendar.MINUTE)
+        // Calcular minutos hasta la próxima hora
+        val minutesUntilNextHour = 60 - currentMinute
+        val secondsUntilNextHour = 60 - currentSecond
 
-            // Verificar si es día laboral (lunes=2 a viernes=6)
-            val isWeekday = dayOfWeek in Calendar.MONDAY..Calendar.FRIDAY
+        val delayMillis = ((minutesUntilNextHour * 60 + secondsUntilNextHour) * 1000).toLong()
 
-            if (isWeekday) {
-                // Si estamos en día laboral, verificar la hora
-                when {
-                    // Antes de las 8:45 AM - programar para 8:45 AM hoy
-                    hour < 8 || (hour == 8 && minute < 45) -> {
-                        calendar.set(Calendar.HOUR_OF_DAY, 8)
-                        calendar.set(Calendar.MINUTE, 45)
-                        calendar.set(Calendar.SECOND, 0)
-                        calendar.set(Calendar.MILLISECOND, 0)
-                        break
-                    }
-                    // Entre 8:45 AM y 4:45 PM - programar para la próxima hora :45
-                    (hour in (8..15)) && !(hour == 8 && minute < 45) && !(hour == 16 && minute >= 45) -> {
-                        val nextHour = if (hour == 8 && minute < 45) 8 else hour + 1
-                        if (nextHour <= 16) {
-                            calendar.set(Calendar.HOUR_OF_DAY, nextHour)
-                            calendar.set(Calendar.MINUTE, 45)
-                            calendar.set(Calendar.SECOND, 0)
-                            calendar.set(Calendar.MILLISECOND, 0)
-                            break
-                        } else {
-                            // Si sería después de las 4:45 PM, ir al próximo día laboral
-                            calendar.add(Calendar.DAY_OF_YEAR, 1)
-                            calendar.set(Calendar.HOUR_OF_DAY, 8)
-                            calendar.set(Calendar.MINUTE, 45)
-                            calendar.set(Calendar.SECOND, 0)
-                            calendar.set(Calendar.MILLISECOND, 0)
-                        }
-                    }
-                    // Después de las 4:45 PM - programar para mañana 8:45 AM
-                    else -> {
-                        calendar.add(Calendar.DAY_OF_YEAR, 1)
-                        calendar.set(Calendar.HOUR_OF_DAY, 8)
-                        calendar.set(Calendar.MINUTE, 45)
-                        calendar.set(Calendar.SECOND, 0)
-                        calendar.set(Calendar.MILLISECOND, 0)
-                    }
-                }
-            } else {
-                // Si es fin de semana, avanzar al próximo lunes
-                val daysUntilMonday = (Calendar.MONDAY - dayOfWeek + 7) % 7
-                if (daysUntilMonday == 0) {
-                    calendar.add(Calendar.DAY_OF_YEAR, 7) // Si es domingo, ir al próximo lunes
-                } else {
-                    calendar.add(Calendar.DAY_OF_YEAR, daysUntilMonday)
-                }
-                calendar.set(Calendar.HOUR_OF_DAY, 8)
-                calendar.set(Calendar.MINUTE, 45)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                break
-            }
+        val nextSyncTime = Calendar.getInstance().apply {
+            add(Calendar.MILLISECOND, delayMillis.toInt())
         }
 
-        val delay = calendar.timeInMillis - currentTime
-        val nextSyncTime = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(calendar.time)
-        Log.d("MainApplication", "Próxima sincronización programada para: $nextSyncTime")
+        val formatter = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+        Log.d("MainApplication", "Próxima sincronización automática: ${formatter.format(nextSyncTime.time)}")
+        Log.d("MainApplication", "Delay inicial: ${delayMillis / 1000 / 60} minutos")
 
-        return delay
+        return delayMillis
+    }
+
+    private fun logWorkManagerStatus() {
+        val workManager = WorkManager.getInstance(this)
+
+        // Obtener información de trabajos programados
+        val workInfosFuture = workManager.getWorkInfosForUniqueWork(SyncWorker.WORK_NAME)
+
+        try {
+            val workInfos = workInfosFuture.get()
+            Log.d("MainApplication", "=== Estado de WorkManager ===")
+            Log.d("MainApplication", "Trabajos encontrados: ${workInfos.size}")
+
+            workInfos.forEachIndexed { index, workInfo ->
+                Log.d("MainApplication", "Trabajo $index:")
+                Log.d("MainApplication", "  - ID: ${workInfo.id}")
+                Log.d("MainApplication", "  - Estado: ${workInfo.state}")
+                Log.d("MainApplication", "  - Intento: ${workInfo.runAttemptCount}")
+                Log.d("MainApplication", "  - Tags: ${workInfo.tags}")
+            }
+            Log.d("MainApplication", "============================")
+        } catch (e: Exception) {
+            Log.e("MainApplication", "Error obteniendo estado de WorkManager", e)
+        }
     }
 
     companion object {
-        // Para compartir el estado de sincronización inicial
         val isInitialSyncRunning = MutableStateFlow(false)
+        const val SYNC_WORK_TAG = "sync_work_tag"
     }
 }
