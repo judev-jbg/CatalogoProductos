@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+        <style name="Theme.CatalogoProductos" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+                <item name="android:splashScreenTheme">@color/primary</item>
+                <!-- Colores primarios -->
+                <item name="colorPrimary">@color/primary</item>
+                <item name="colorPrimaryVariant">@color/primary_variant</item>
+                <item name="colorOnPrimary">@color/on_primary</item>
+                <!-- Colores secundarios -->
+                <item name="colorSecondary">@color/secondary</item>
+                <item name="colorSecondaryVariant">@color/secondary_variant</item>
+                <item name="colorOnSecondary">@color/on_secondary</item>
+                <!-- Colores de fondo -->
+                <item name="android:colorBackground">@color/background</item>
+                <item name="colorSurface">@color/surface</item>
+                <!-- Barra de estado -->
+                <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        </style>
+
+        <style name="Theme.App.SplashScreen" parent="Theme.CatalogoProductos">
+                <!-- Fondo blanco del splash screen -->
+                 <item name="windowSplashScreenBackground">@android:color/white</item>
+
+                <!-- Icono del splash screen (opcional) -->
+                <!--<item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item> -->
+
+                <!-- Color del icono (opcional) -->
+                <!--<item name="windowSplashScreenIconBackgroundColor">@color/md_theme_light_primary</item> -->
+
+                <!-- Duración de la animación (opcional) -->
+                <!--<item name="windowSplashScreenAnimationDuration">500</item> -->
+
+                <!-- Tema que se aplica después del splash -->
+                <item name="postSplashScreenTheme">@style/Theme.CatalogoProductos</item>
+        </style>
+
+</resources>
